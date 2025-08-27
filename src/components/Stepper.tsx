@@ -1,48 +1,55 @@
-type Step = { id: number; label: string };
+// src/components/Stepper.tsx
+import React from "react";
 
-export default function Stepper({
-  steps,
-  current,
-}: {
+interface Step {
+  id: number;
+  label: string;
+}
+interface StepperProps {
   steps: Step[];
   current: number;
-}) {
+}
+
+export default function Stepper({ steps, current }: StepperProps) {
   return (
-    <div className="sticky top-0 z-10 bg-slate-50/80 backdrop-blur supports-[backdrop-filter]:backdrop-blur mb-4">
-      <ol className="flex items-center gap-3 p-3">
-        {steps.map((s, i) => {
-          const done = i < current;
-          const active = i === current;
-          return (
-            <li key={s.id} className="flex items-center gap-2">
-              <span
-                className={[
-                  'w-7 h-7 rounded-full grid place-items-center text-sm font-semibold',
-                  done
-                    ? 'bg-brand-500 text-white'
-                    : active
-                    ? 'bg-brand-700 text-white'
-                    : 'bg-slate-200 text-slate-600',
-                ].join(' ')}
-                aria-current={active ? 'step' : undefined}
-                title={s.label}
-              >
-                {s.id}
-              </span>
-              <span
-                className={
-                  active ? 'font-semibold' : 'text-slate-600 hidden md:inline'
-                }
-              >
-                {s.label}
-              </span>
-              {i !== steps.length - 1 && (
-                <span className="mx-2 w-10 border-t border-slate-300" />
-              )}
-            </li>
-          );
-        })}
-      </ol>
+    <div className="flex items-center justify-between relative">
+      {steps.map((step, index) => {
+        const isActive = index === current;
+        const isCompleted = index < current;
+
+        return (
+          <div key={step.id} className="flex-1 flex items-center">
+            {/* Círculo */}
+            <div
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium
+                ${isActive
+                  ? "bg-brand-500 text-white ring-4 ring-brand-500/30"
+                  : isCompleted
+                  ? "bg-brand-200 text-brand-700"
+                  : "bg-slate-200 text-slate-500"
+                }`}
+            >
+              {isCompleted ? "✓" : step.id}
+            </div>
+
+            {/* Label */}
+            <span
+              className={`ml-2 text-sm font-medium
+                ${isActive ? "text-brand-600" : "text-slate-500"}`}
+            >
+              {step.label}
+            </span>
+
+            {/* Linha entre steps */}
+            {index < steps.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 mx-2 transition-colors duration-300
+                  ${isCompleted ? "bg-brand-500" : "bg-slate-300"}`}
+              ></div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

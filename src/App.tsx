@@ -27,20 +27,19 @@ function Wizard() {
     []
   );
 
-  // validação simples por etapa (habilita "Próximo")
   const canNext = useMemo(() => {
     const d = state.dados;
     switch (step) {
       case 0:
-        return !!(d.nome && d.email && d.telefone); // básicos
+        return !!(d.nome && d.email && d.telefone);
       case 1:
-        return true; // opcional validar ao menos 1 formação
+        return true;
       case 2:
         return state.skills.length >= 1;
       case 3:
         return state.experiencias.length >= 1;
       case 4:
-        return true; // cert/idiomas opcionais
+        return true;
       default:
         return true;
     }
@@ -54,12 +53,12 @@ function Wizard() {
   }
 
   return (
-    <div className="h-screen grid grid-cols-2">
-      {/* Esquerda: conteúdo do wizard */}
-      <div className="h-full overflow-y-auto p-6">
+    <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_2fr] bg-gray-100">
+      {/* Esquerda */}
+      <div className="h-full overflow-y-auto p-6 bg-gray-50 border-r border-gray-200">
         <Stepper steps={steps} current={step} />
 
-        <div className="space-y-8">
+        <div className="space-y-8 mt-6">
           {step === 0 && <PersonalForm />}
           {step === 1 && (
             <>
@@ -78,25 +77,26 @@ function Wizard() {
           {step === 5 && <Review />}
         </div>
 
-        <WizardNav
-          canBack={step > 0}
-          canNext={canNext && step < steps.length - 1}
-          onBack={back}
-          onNext={next}
-          nextLabel={
-            step === steps.length - 2
-              ? 'Ir para revisão'
-              : step === steps.length - 1
-              ? 'Concluir'
-              : 'Próximo'
-          }
-        />
+        <div className="mt-8">
+          <WizardNav
+            canBack={step > 0}
+            canNext={canNext && step < steps.length - 1}
+            onBack={back}
+            onNext={next}
+            nextLabel={
+              step === steps.length - 2
+                ? 'Ir para revisão'
+                : step === steps.length - 1
+                ? 'Concluir'
+                : 'Próximo'
+            }
+          />
+        </div>
       </div>
 
-      {/* Direita: preview live em todas as etapas (menos na Review, onde mostramos ampliado) */}
-      <div className="h-full overflow-y-auto p-8 bg-white hidden lg:block">
-        {/* preview leve (reutiliza o mesmo componente) */}
-        <div className="scale-[0.95] origin-top-left">
+      {/* Direita */}
+      <div className="h-full overflow-y-auto p-6 bg-gray-100 hidden lg:flex justify-center items-start">
+        <div className="bg-white shadow-xl rounded-lg w-[800px] min-h-[90%] p-8">
           <Review />
         </div>
       </div>
@@ -111,3 +111,4 @@ export default function App() {
     </ResumeProvider>
   );
 }
+
