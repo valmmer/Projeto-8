@@ -91,7 +91,7 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="text-slate-500">Adicione suas formações…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas formações…</p>
         )}
       </section>
 
@@ -107,7 +107,7 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="text-slate-500">Adicione suas habilidades…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas habilidades…</p>
         )}
       </section>
 
@@ -132,7 +132,7 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="text-slate-500">Adicione suas experiências…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas experiências…</p>
         )}
       </section>
 
@@ -150,7 +150,7 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="text-slate-500">Adicione suas certificações…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas certificações…</p>
         )}
       </section>
 
@@ -166,7 +166,7 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="text-slate-500">Adicione seus idiomas…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione seus idiomas…</p>
         )}
       </section>
     </article>
