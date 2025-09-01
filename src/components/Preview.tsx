@@ -37,8 +37,8 @@ export default function Preview() {
               {dados.nome || 'Seu Nome'}
             </h2>
             <p className="text-sm">
-              {dados.email || 'email'} · {dados.telefone || 'telefone'} ·{' '}
-              {dados.linkedin || 'linkedin'}
+              {dados.email || 'Email'} · {dados.telefone || 'Telefone'} ·{' '}
+              {dados.linkedin || 'Linkedin'}
               {dados.cidadePais ? ` · ${dados.cidadePais}` : ''}
               {(dados as any)?.dataNascimento
                 ? ` · Nasc.: ${(dados as any).dataNascimento}`
