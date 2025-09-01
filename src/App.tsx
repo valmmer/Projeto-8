@@ -46,7 +46,7 @@ function Wizard() {
   }, [step, state]);
 
   function next() {
-    if (step === steps.length - 1) {
+      if (step === steps.length - 1) {
       // 🔥 Ação final ao concluir
       console.log("Currículo finalizado:", state);
       alert("Currículo concluído com sucesso!");

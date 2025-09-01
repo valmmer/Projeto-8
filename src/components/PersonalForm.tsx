@@ -90,7 +90,7 @@ export default function PersonalForm() {
             {/* Coluna campos principais */}
             <div className="md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="field md:col-span-2">
-                <label className="label">Nome completo</label>
+                <label className="label">Nome completo (Obrigatório)</label>
                 <input
                   className="input"
                   value={state.dados.nome}
@@ -104,7 +104,7 @@ export default function PersonalForm() {
               </div>
 
               <div className="field">
-                <label className="label">Cidade / País</label>
+                <label className="label">Cidade/País</label>
                 <input
                   className="input"
                   value={state.dados.cidadePais ?? ''}
@@ -137,7 +137,7 @@ export default function PersonalForm() {
           {/* Contatos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
             <div className="field">
-              <label className="label">Email</label>
+              <label className="label">Email (Obrigatório)</label>
               <input
                 className="input"
                 type="email"
@@ -151,7 +151,7 @@ export default function PersonalForm() {
               />
             </div>
             <div className="field">
-              <label className="label">Telefone (DDD/DDI)</label>
+              <label className="label">Telefone (DDD/DDI) (Obrigatório)</label>
               <input
                 className="input"
                 value={state.dados.telefone}
@@ -164,7 +164,7 @@ export default function PersonalForm() {
               />
             </div>
             <div className="field">
-              <label className="label">LinkedIn</label>
+              <label className="label">LinkedIn (Obrigatório)</label>
               <input
                 className="input"
                 placeholder="https://linkedin.com/in/..."
@@ -178,7 +178,7 @@ export default function PersonalForm() {
               />
             </div>
             <div className="field">
-              <label className="label">GitHub (opcional)</label>
+              <label className="label">GitHub</label>
               <input
                 className="input"
                 value={state.dados.github ?? ''}
@@ -191,7 +191,7 @@ export default function PersonalForm() {
               />
             </div>
             <div className="field md:col-span-2">
-              <label className="label">Portfólio / Site (opcional)</label>
+              <label className="label">Portfólio / Site</label>
               <input
                 className="input"
                 value={state.dados.site ?? ''}
@@ -207,7 +207,7 @@ export default function PersonalForm() {
 
           {/* Resumo */}
           <div className="field mt-5">
-            <label className="label">Resumo profissional</label>
+            <label className="label">Resumo profissional (Obrigatório)</label>
             <textarea
               className="input h-28"
               placeholder="Máx. 600 caracteres"
