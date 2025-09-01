@@ -11,6 +11,16 @@ export default function WizardNav({
   onNext: () => void;
   nextLabel?: string;
 }) {
+  function handleNext() {
+    if (!canNext) {
+      alert(
+        '⚠️ Por favor, complete todos os campos obrigatórios antes de continuar.',
+      );
+      return;
+    }
+    onNext();
+  }
+
   return (
     <div className="flex justify-between gap-3 pt-4">
       <button
@@ -23,9 +33,12 @@ export default function WizardNav({
       </button>
       <button
         type="button"
-        disabled={!canNext}
-        onClick={onNext}
-        className="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-700 text-white disabled:opacity-50"
+        onClick={handleNext}
+        className={`px-4 py-2 rounded-xl text-white disabled:opacity-50 ${
+          canNext
+            ? 'bg-brand-500 hover:bg-brand-700'
+            : 'bg-gray-400 cursor-not-allowed'
+        }`}
       >
         {nextLabel}
       </button>

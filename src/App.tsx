@@ -45,15 +45,14 @@ function Wizard() {
     }
   }, [step, state]);
 
-  function next() {
-    if (step === steps.length - 1) {
-      // 🔥 Ação final ao concluir
-      console.log("Currículo finalizado:", state);
-      alert("Currículo concluído com sucesso!");
+  const handleNext = () => {
+    if (!canNext) {
+      window.alert("Preencha todos os campos obrigatórios para continuar");
+        console.log (handleNext ())
       return;
-    }
-    setStep((s) => Math.min(s + 1, steps.length - 1));
   }
+  onNext();
+};
 
   function back() {
     setStep((s) => Math.max(s - 1, 0));
@@ -89,7 +88,7 @@ function Wizard() {
             canBack={step > 0}
             canNext={canNext && step < steps.length}
             onBack={back}
-            onNext={next}
+            onNext={handleNext}
             nextLabel={
               step === steps.length - 2
                 ? "Ir para revisão"
@@ -118,3 +117,7 @@ export default function App() {
     </ResumeProvider>
   );
 }
+function onNext() {
+  throw new Error("Function not implemented.");
+}
+
