@@ -1,10 +1,23 @@
 import { type ChangeEvent, useState } from 'react';
 import { useResume } from '../state/ResumeContext';
+import type { PersonalErrors } from '../state/personal'; // (type opcional)
 
 const MAX_MB = 3;
 const ACCEPT = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+const FontFaceSe: React.CSSProperties = {
+  color: 'red',
+  fontFamily: "Arial, sans-serif",
+  fontSize: "14px",
+  fontWeight: "bold",
+};
 
-export default function PersonalForm() {
+export default function PersonalForm({
+  submitted = false,
+  errors = {},
+}: {
+  submitted?: boolean;
+  errors?: PersonalErrors;
+}) {
   const { state, dispatch } = useResume();
   const [fotoErro, setFotoErro] = useState<string>('');
   const resumo = state.dados.resumo ?? '';
@@ -32,11 +45,18 @@ export default function PersonalForm() {
     setFotoErro('');
   }
 
+  const withErr = (hasErr?: boolean) =>
+    `input ${hasErr ? 'ring-2 ring-red-500 border-red-500' : ''}`;
+
+  const show = (k: keyof typeof errors) => submitted && errors[k];
+
+
   return (
     <section className="section">
-      <h2 className="text-xl font-semibold">Dados Pessoais</h2>
+      <h2 className="text-xl font-semibold"> Dados Pessoais <strong style={FontFaceSe}>* Campos Obrigatórios</strong></h2>
+      
 
-      <div className="card">
+      <div className="card"> 
         <div className="card-body">
           {/* Linha: Avatar + dados principais */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
@@ -90,9 +110,10 @@ export default function PersonalForm() {
             {/* Coluna campos principais */}
             <div className="md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="field md:col-span-2">
-                <label className="label">Nome completo (Obrigatório)</label>
+                <label className="label">Nome completo *</label>
                 <input
-                  className="input"
+                  className={withErr(!!show('nome'))}
+                  aria-invalid={!!show('nome')}
                   value={state.dados.nome}
                   onChange={(e) =>
                     dispatch({
@@ -101,12 +122,16 @@ export default function PersonalForm() {
                     })
                   }
                 />
+                {show('nome') && (
+                  <p className="help text-red-600">{errors.nome}</p>
+                )}
               </div>
 
               <div className="field">
-                <label className="label">Cidade/País</label>
+                <label className="label">Cidade / País</label>
                 <input
-                  className="input"
+                  className={withErr(!!show('cidadePais'))}
+                  aria-invalid={!!show('cidadePais')}
                   value={state.dados.cidadePais ?? ''}
                   onChange={(e) =>
                     dispatch({
@@ -115,13 +140,17 @@ export default function PersonalForm() {
                     })
                   }
                 />
+                {show('cidadePais') && (
+                  <p className="help text-red-600">{errors.cidadePais}</p>
+                )}
               </div>
 
               <div className="field">
-                <label className="label">Data de nascimento</label>
+                <label className="label">Data de nascimento *</label>
                 <input
                   type="date"
-                  className="input"
+                  className={withErr(!!show('dataNascimento'))}
+                  aria-invalid={!!show('dataNascimento')}
                   value={state.dados.dataNascimento ?? ''}
                   onChange={(e) =>
                     dispatch({
@@ -130,6 +159,9 @@ export default function PersonalForm() {
                     })
                   }
                 />
+                {show('dataNascimento') && (
+                  <p className="help text-red-600">{errors.dataNascimento}</p>
+                )}
               </div>
             </div>
           </div>
@@ -137,9 +169,10 @@ export default function PersonalForm() {
           {/* Contatos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
             <div className="field">
-              <label className="label">Email (Obrigatório)</label>
+              <label className="label">Email *</label>
               <input
-                className="input"
+                className={withErr(!!show('email'))}
+                aria-invalid={!!show('email')}
                 type="email"
                 value={state.dados.email}
                 onChange={(e) =>
@@ -149,11 +182,15 @@ export default function PersonalForm() {
                   })
                 }
               />
+              {show('email') && (
+                <p className="help text-red-600">{errors.email}</p>
+              )}
             </div>
             <div className="field">
-              <label className="label">Telefone (DDD/DDI) (Obrigatório)</label>
+              <label className="label">Telefone (DDD/DDI) *</label>
               <input
-                className="input"
+                className={withErr(!!show('telefone'))}
+                aria-invalid={!!show('telefone')}
                 value={state.dados.telefone}
                 onChange={(e) =>
                   dispatch({
@@ -162,11 +199,15 @@ export default function PersonalForm() {
                   })
                 }
               />
+              {show('telefone') && (
+                <p className="help text-red-600">{errors.telefone}</p>
+              )}
             </div>
             <div className="field">
-              <label className="label">LinkedIn (Obrigatório)</label>
+              <label className="label">LinkedIn</label>
               <input
-                className="input"
+                className={withErr(!!show('linkedin'))}
+                aria-invalid={!!show('linkedin')}
                 placeholder="https://linkedin.com/in/..."
                 value={state.dados.linkedin}
                 onChange={(e) =>
@@ -176,11 +217,15 @@ export default function PersonalForm() {
                   })
                 }
               />
+              {show('linkedin') && (
+                <p className="help text-red-600">{errors.linkedin}</p>
+              )}
             </div>
             <div className="field">
-              <label className="label">GitHub</label>
+              <label className="label">GitHub </label>
               <input
-                className="input"
+                className={withErr(!!show('github'))}
+                aria-invalid={!!show('github')}
                 value={state.dados.github ?? ''}
                 onChange={(e) =>
                   dispatch({
@@ -189,11 +234,15 @@ export default function PersonalForm() {
                   })
                 }
               />
+              {show('github') && (
+                <p className="help text-red-600">{errors.github}</p>
+              )}
             </div>
             <div className="field md:col-span-2">
               <label className="label">Portfólio / Site</label>
               <input
-                className="input"
+                className={withErr(!!show('site'))}
+                aria-invalid={!!show('site')}
                 value={state.dados.site ?? ''}
                 onChange={(e) =>
                   dispatch({
@@ -202,14 +251,18 @@ export default function PersonalForm() {
                   })
                 }
               />
+              {show('site') && (
+                <p className="help text-red-600">{errors.site}</p>
+              )}
             </div>
           </div>
 
           {/* Resumo */}
           <div className="field mt-5">
-            <label className="label">Resumo profissional (Obrigatório)</label>
+            <label className="label">Resumo profissional *</label>
             <textarea
-              className="input h-28"
+              className={`${withErr(!!show('resumo'))} h-28`}
+              aria-invalid={!!show('resumo')}
               placeholder="Máx. 600 caracteres"
               value={resumo}
               onChange={(e) =>
@@ -226,6 +279,9 @@ export default function PersonalForm() {
             >
               {resumo.length}/{max}
             </div>
+            {show('resumo') && (
+              <p className="help text-red-600">{errors.resumo}</p>
+            )}
           </div>
         </div>
       </div>
