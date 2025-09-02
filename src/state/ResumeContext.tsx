@@ -16,17 +16,56 @@ type Action =
   | { type: 'REMOVE_SKILL'; payload: string }
   | { type: 'ADD_EXP'; payload: Experience }
   | { type: 'REMOVE_EXP'; payload: string }
-  | { type: 'ADD_EDU'; payload: Education } // NOVO
-  | { type: 'REMOVE_EDU'; payload: string } // NOVO
-  | { type: 'ADD_CERT'; payload: Certification } // NOVO
-  | { type: 'REMOVE_CERT'; payload: string } // NOVO
-  | { type: 'ADD_LANG'; payload: Language } // NOVO
-  | { type: 'REMOVE_LANG'; payload: string }; // NOVO
+  | { type: 'ADD_EDU'; payload: Education }
+  | { type: 'REMOVE_EDU'; payload: string }
+  | { type: 'ADD_CERT'; payload: Certification }
+  | { type: 'REMOVE_CERT'; payload: string }
+  | { type: 'ADD_LANG'; payload: Language }
+  | { type: 'REMOVE_LANG'; payload: string };
+
+// ---------------- Sanitização de payload ----------------
+function trimOrUndef(v: unknown): any {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  return t === '' ? undefined : t;
+}
+
+/**
+ * - Aparar espaços de todos os campos string
+ * - Converter "" -> undefined nos opcionais (linkedin, github, site, cidadePais, dataNascimento, foto, objetivo* se quiser)
+ */
+function cleanPersonalPayload(p: Partial<PersonalData>): Partial<PersonalData> {
+  const out: Partial<PersonalData> = { ...p };
+
+  // aparar básicos
+  if (typeof out.nome === 'string') out.nome = out.nome.trim();
+  if (typeof out.email === 'string') out.email = out.email.trim();
+  if (typeof out.telefone === 'string') out.telefone = out.telefone.trim();
+  if (typeof out.resumo === 'string') out.resumo = out.resumo.trim();
+
+  // objetivo é opcional, mas normalmente queremos aparar (não transformar em undefined automaticamente)
+  if (typeof (out as any).objetivo === 'string') {
+    (out as any).objetivo = (out as any).objetivo.trim();
+  }
+
+  // opcionais: "" -> undefined
+  if ('linkedin' in out) out.linkedin = trimOrUndef(out.linkedin);
+  if ('github' in out) out.github = trimOrUndef(out.github);
+  if ('site' in out) out.site = trimOrUndef(out.site);
+  if ('cidadePais' in out) out.cidadePais = trimOrUndef(out.cidadePais);
+  if ('dataNascimento' in out)
+    out.dataNascimento = trimOrUndef(out.dataNascimento);
+  if ('foto' in out) out.foto = trimOrUndef(out.foto);
+
+  return out;
+}
 
 function reducer(state: ResumeState, action: Action): ResumeState {
   switch (action.type) {
-    case 'SET_DADOS':
-      return { ...state, dados: { ...state.dados, ...action.payload } };
+    case 'SET_DADOS': {
+      const clean = cleanPersonalPayload(action.payload);
+      return { ...state, dados: { ...state.dados, ...clean } };
+    }
     case 'ADD_SKILL':
       return { ...state, skills: [...state.skills, action.payload] };
     case 'REMOVE_SKILL':
@@ -44,7 +83,6 @@ function reducer(state: ResumeState, action: Action): ResumeState {
         ...state,
         experiencias: state.experiencias.filter((e) => e.id !== action.payload),
       };
-
     case 'ADD_EDU':
       return { ...state, formacoes: [...state.formacoes, action.payload] };
     case 'REMOVE_EDU':
@@ -52,7 +90,6 @@ function reducer(state: ResumeState, action: Action): ResumeState {
         ...state,
         formacoes: state.formacoes.filter((f) => f.id !== action.payload),
       };
-
     case 'ADD_CERT':
       return {
         ...state,
@@ -62,10 +99,9 @@ function reducer(state: ResumeState, action: Action): ResumeState {
       return {
         ...state,
         certificacoes: state.certificacoes.filter(
-          (c) => c.id !== action.payload
+          (c) => c.id !== action.payload,
         ),
       };
-
     case 'ADD_LANG':
       return { ...state, idiomas: [...state.idiomas, action.payload] };
     case 'REMOVE_LANG':
@@ -73,7 +109,6 @@ function reducer(state: ResumeState, action: Action): ResumeState {
         ...state,
         idiomas: state.idiomas.filter((l) => l.id !== action.payload),
       };
-
     default:
       return state;
   }

@@ -17,12 +17,31 @@ export default function Preview() {
   const nCert = `${base + 3}.`;
   const nIdiomas = `${base + 4}.`;
 
+  // monta a linha de contatos apenas com o que existir
+  const contactParts = [
+    dados.email?.trim(),
+    dados.telefone?.trim(),
+    dados.linkedin?.trim(), // ← só aparece se tiver
+    dados.cidadePais?.trim(),
+    (dados as any)?.dataNascimento?.trim()
+      ? `Nasc.: ${(dados as any).dataNascimento.trim()}`
+      : null,
+  ].filter(Boolean) as string[];
+
+  // linha extra (GitHub/Site) também opcional
+  const extraParts = [
+    (dados as any)?.github?.trim()
+      ? `GitHub: ${(dados as any).github.trim()}`
+      : null,
+    (dados as any)?.site?.trim() ? `Site: ${(dados as any).site.trim()}` : null,
+  ].filter(Boolean) as string[];
+
   return (
     <article className="max-w-3xl mx-auto text-black font-serif leading-relaxed">
       {/* Cabeçalho */}
       <header className="mb-6">
         <div className="flex items-center gap-4">
-          {dados.foto && (
+          {dados.foto?.trim() && (
             <img
               src={dados.foto}
               alt={dados.nome || 'Foto'}
@@ -36,23 +55,20 @@ export default function Preview() {
             <h2 className="text-xl font-semibold mt-1">
               {dados.nome || 'Seu Nome'}
             </h2>
-            <p className="text-sm">
-              {dados.email || 'Email'} · {dados.telefone || 'Telefone'} ·{' '}
-              {dados.linkedin || 'Linkedin'}
-              {dados.cidadePais ? ` · ${dados.cidadePais}` : ''}
-              {(dados as any)?.dataNascimento
-                ? ` · Nasc.: ${(dados as any).dataNascimento}`
-                : ''}
-            </p>
-            {(dados as any)?.github || (dados as any)?.site ? (
-              <p className="text-sm">
-                {(dados as any)?.github
-                  ? `GitHub: ${(dados as any).github}`
-                  : ''}
-                {(dados as any)?.github && (dados as any)?.site ? ' · ' : ''}
-                {(dados as any)?.site ? `Site: ${(dados as any).site}` : ''}
+
+            {/* Contatos — só mostra o que existe */}
+            {contactParts.length > 0 ? (
+              <p className="text-sm">{contactParts.join(' · ')}</p>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Preencha seus dados de contato…
               </p>
-            ) : null}
+            )}
+
+            {/* GitHub / Site — também opcional */}
+            {extraParts.length > 0 && (
+              <p className="text-sm">{extraParts.join(' · ')}</p>
+            )}
           </div>
         </div>
         <hr className="mt-4" />
@@ -91,7 +107,9 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas formações…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas formações…
+          </p>
         )}
       </section>
 
@@ -107,7 +125,9 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas habilidades…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas habilidades…
+          </p>
         )}
       </section>
 
@@ -132,7 +152,9 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas experiências…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas experiências…
+          </p>
         )}
       </section>
 
@@ -150,7 +172,9 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas certificações…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas certificações…
+          </p>
         )}
       </section>
 
@@ -166,7 +190,9 @@ export default function Preview() {
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione seus idiomas…</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione seus idiomas…
+          </p>
         )}
       </section>
     </article>
