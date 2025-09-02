@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { improveText, type ImproveField } from '../lib/ai';
+import { improveText, type ImproveField, type ImproveMeta } from '../lib/ai';
 
 type Props = {
-  value: string;
-  field: ImproveField; // "resumo" | "experiencia"
+  value: string; // texto ou prompt a enviar
+  field: ImproveField; // "resumo" | "experiencia" | "objetivo"
   onChange: (newValue: string) => void;
-  onLoadingChange?: (loading: boolean) => void; // ✅ avisa o pai para mostrar overlay
+  onLoadingChange?: (loading: boolean) => void;
+  meta?: ImproveMeta; // ✅ preset TI e contexto
 };
 
 export default function ImproveButton({
@@ -13,6 +14,7 @@ export default function ImproveButton({
   field,
   onChange,
   onLoadingChange,
+  meta,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +35,12 @@ export default function ImproveButton({
     controller.current = new AbortController();
 
     setLoading(true);
-    onLoadingChange?.(true); // ✅ informa o pai
+    onLoadingChange?.(true);
 
     try {
       const res = await improveText(value, field, {
         signal: controller.current.signal,
+        meta, // ✅ envia preset TI
       });
       if (res.result) onChange(res.result);
     } catch (e: any) {
@@ -46,7 +49,7 @@ export default function ImproveButton({
       }
     } finally {
       setLoading(false);
-      onLoadingChange?.(false); // ✅ encerra loading no pai
+      onLoadingChange?.(false);
     }
   }
 
@@ -57,6 +60,7 @@ export default function ImproveButton({
         onClick={handleClick}
         disabled={loading}
         className="btn btn-outline"
+        aria-busy={loading ? 'true' : 'false'}
       >
         {loading ? 'Melhorando...' : '✨ Melhorar'}
       </button>
