@@ -5,8 +5,11 @@ export interface PersonalData {
   nome: string;
   email: string;
   telefone: string;
-  linkedin: string;
+  linkedin: string;   // pode manter string vazia "" quando não tiver
   resumo: string;
+
+  // novo (para IA do Objetivo)
+  objetivo?: string;  // ✅ adicionado
 
   // opcionais (não obrigatórios, mas úteis em currículo)
   cidadePais?: string;

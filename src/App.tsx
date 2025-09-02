@@ -1,15 +1,22 @@
-import { useMemo, useState } from "react";
-import { ResumeProvider, useResume } from "./state/ResumeContext";
-import PersonalForm from "./components/PersonalForm";
-import ObjectiveForm from "./components/ObjectiveForm";
-import EducationForm from "./components/EducationForm";
-import SkillsForm from "./components/SkillsForm";
-import ExperienceForm from "./components/ExperienceForm";
-import CertificationsForm from "./components/CertificationsForm";
-import LanguagesForm from "./components/LanguagesForm";
-import Stepper from "./components/Stepper";
-import WizardNav from "./components/WizardNav";
-import Review from "./components/Review";
+// App.tsx
+import { useMemo, useState } from 'react';
+import { ResumeProvider, useResume } from './state/ResumeContext';
+import PersonalForm from './components/PersonalForm';
+import ObjectiveForm from './components/ObjectiveForm';
+import EducationForm from './components/EducationForm';
+import SkillsForm from './components/SkillsForm';
+import ExperienceForm from './components/ExperienceForm';
+import CertificationsForm from './components/CertificationsForm';
+import LanguagesForm from './components/LanguagesForm';
+import Stepper from './components/Stepper';
+import WizardNav from './components/WizardNav';
+import Review from './components/Review';
+
+// ✅ importe os validadores
+import {
+  canProceedPersonal,
+  canProceedObjectiveAndEducation,
+} from './state/personal';
 
 function Wizard() {
   const { state } = useResume();
@@ -17,23 +24,25 @@ function Wizard() {
 
   const steps = useMemo(
     () => [
-      { id: 1, label: "Dados pessoais" },
-      { id: 2, label: "Objetivo & Formação" },
-      { id: 3, label: "Habilidades" },
-      { id: 4, label: "Experiência" },
-      { id: 5, label: "Certif. & Idiomas" },
-      { id: 6, label: "Revisão" },
+      { id: 1, label: 'Dados pessoais' },
+      { id: 2, label: 'Objetivo & Formação' },
+      { id: 3, label: 'Habilidades' },
+      { id: 4, label: 'Experiência' },
+      { id: 5, label: 'Certif. & Idiomas' },
+      { id: 6, label: 'Revisão' },
     ],
-    []
+    [],
   );
 
+  // ✅ regra de habilitação do botão "Próximo"
   const canNext = useMemo(() => {
-    const d = state.dados;
     switch (step) {
       case 0:
-        return !!(d.nome && d.email && d.telefone);
+        // Dados pessoais: usa o validador completo (nome, email, telefone, resumo etc.)
+        return canProceedPersonal(state);
       case 1:
-        return true;
+        // Objetivo obrigatório + ao menos 1 Formação válida
+        return canProceedObjectiveAndEducation(state);
       case 2:
         return state.skills.length >= 1;
       case 3:
@@ -45,18 +54,30 @@ function Wizard() {
     }
   }, [step, state]);
 
+  // avança 1 passo (sem passar do último)
+  const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
+  // volta 1 passo (sem passar do primeiro)
+  const back = () => setStep((s) => Math.max(s - 1, 0));
+
   const handleNext = () => {
     if (!canNext) {
-      window.alert("Preencha todos os campos obrigatórios para continuar");
-        console.log (handleNext ())
-      return;
-  }
-  onNext();
-};
-
-  function back() {
-    setStep((s) => Math.max(s - 1, 0));
-  }
+      // Mensagem mais clara no passo 2
+      if (step === 1) {
+        window.alert(
+          'Preencha o OBJETIVO e adicione ao menos UMA FORMAÇÃO válida para continuar.',
+        );
+      } else {
+        window.alert('Preencha todos os campos obrigatórios para continuar.');
+      }
+      return; // não avança
+    }
+    if (step < steps.length - 1) {
+      next();
+    } else {
+      // último passo: aqui você pode acionar "concluir" (ex.: gerar PDF/salvar)
+      console.log('Wizard concluído');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_2fr] bg-gray-100">
@@ -86,15 +107,16 @@ function Wizard() {
         <div className="mt-8">
           <WizardNav
             canBack={step > 0}
-            canNext={canNext && step < steps.length}
+            // ✅ desabilita "Próximo" se inválido ou se já está no último passo
+            canNext={canNext && step < steps.length - 1}
             onBack={back}
             onNext={handleNext}
             nextLabel={
               step === steps.length - 2
-                ? "Ir para revisão"
+                ? 'Ir para revisão'
                 : step === steps.length - 1
-                ? "Concluir"
-                : "Próximo"
+                  ? 'Concluir'
+                  : 'Próximo'
             }
           />
         </div>
@@ -117,7 +139,3 @@ export default function App() {
     </ResumeProvider>
   );
 }
-function onNext() {
-  throw new Error("Function not implemented.");
-}
-

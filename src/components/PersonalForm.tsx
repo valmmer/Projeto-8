@@ -1,15 +1,33 @@
 import { type ChangeEvent, useState } from 'react';
 import { useResume } from '../state/ResumeContext';
-import type { PersonalErrors } from '../state/personal'; // (type opcional)
+import type { PersonalErrors } from '../state/personal';
+import ImproveButton from '../components/ImproveButton'; // ✅ botão IA
 
 const MAX_MB = 3;
 const ACCEPT = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
 const FontFaceSe: React.CSSProperties = {
   color: 'red',
-  fontFamily: "Arial, sans-serif",
-  fontSize: "14px",
-  fontWeight: "bold",
+  fontFamily: 'Arial, sans-serif',
+  fontSize: '14px',
+  fontWeight: 'bold',
 };
+
+// ✅ corte suave para respeitar 600 chars sem quebrar palavra
+function softClamp(text: string, maxLen: number) {
+  if (text.length <= maxLen) return text;
+  const sliced = text.slice(0, maxLen + 1);
+  const lastSpace = sliced.lastIndexOf(' ');
+  return (
+    (lastSpace > 0
+      ? sliced.slice(0, lastSpace)
+      : sliced.slice(0, maxLen)
+    ).trim() + '…'
+  );
+}
+
+// ✅ duração do highlight pós-IA
+const FX_MS = 900;
 
 export default function PersonalForm({
   submitted = false,
@@ -22,6 +40,18 @@ export default function PersonalForm({
   const [fotoErro, setFotoErro] = useState<string>('');
   const resumo = state.dados.resumo ?? '';
   const max = 600;
+
+  // ✅ estados do efeito no RESUMO
+  const [resumoLoading, setResumoLoading] = useState(false); // overlay enquanto melhora
+  const [resumoFx, setResumoFx] = useState(false); // highlight após retorno
+
+  // ✅ aplica retorno da IA + highlight suave
+  function applyResumoFromAI(textoMelhorado: string) {
+    const clamped = softClamp(textoMelhorado, max);
+    dispatch({ type: 'SET_DADOS', payload: { resumo: clamped } });
+    setResumoFx(true);
+    window.setTimeout(() => setResumoFx(false), FX_MS);
+  }
 
   function onFotoChange(e: ChangeEvent<HTMLInputElement>) {
     setFotoErro('');
@@ -36,7 +66,7 @@ export default function PersonalForm({
       setFotoErro(`Tamanho máximo: ${MAX_MB}MB.`);
       return;
     }
-    const url = URL.createObjectURL(file); // preview imediato
+    const url = URL.createObjectURL(file);
     dispatch({ type: 'SET_DADOS', payload: { foto: url } });
   }
 
@@ -47,16 +77,16 @@ export default function PersonalForm({
 
   const withErr = (hasErr?: boolean) =>
     `input ${hasErr ? 'ring-2 ring-red-500 border-red-500' : ''}`;
-
   const show = (k: keyof typeof errors) => submitted && errors[k];
-
 
   return (
     <section className="section">
-      <h2 className="text-xl font-semibold"> Dados Pessoais <strong style={FontFaceSe}>* Campos Obrigatórios</strong></h2>
-      
+      <h2 className="text-xl font-semibold">
+        {' '}
+        Dados Pessoais <strong style={FontFaceSe}>* Campos Obrigatórios</strong>
+      </h2>
 
-      <div className="card"> 
+      <div className="card">
         <div className="card-body">
           {/* Linha: Avatar + dados principais */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
@@ -257,28 +287,88 @@ export default function PersonalForm({
             </div>
           </div>
 
-          {/* Resumo */}
-          <div className="field mt-5">
+          {/* =========================
+             Resumo: IA + overlay durante loading + highlight pós-IA
+             ========================= */}
+          <div
+            className="field mt-5"
+            aria-busy={resumoLoading ? 'true' : 'false'}
+          >
             <label className="label">Resumo profissional *</label>
-            <textarea
-              className={`${withErr(!!show('resumo'))} h-28`}
-              aria-invalid={!!show('resumo')}
-              placeholder="Máx. 600 caracteres"
-              value={resumo}
-              onChange={(e) =>
-                dispatch({
-                  type: 'SET_DADOS',
-                  payload: { resumo: e.target.value },
-                })
-              }
-            />
-            <div
-              className={`text-xs text-right ${
-                resumo.length <= max ? 'text-slate-500' : 'text-red-600'
-              }`}
-            >
-              {resumo.length}/{max}
+
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div
+                className={`text-xs transition-transform duration-300 ${
+                  resumoFx ? 'scale-105' : ''
+                } ${resumo.length <= max ? 'text-slate-500' : 'text-red-600'}`}
+              >
+                {resumo.length}/{max}
+              </div>
+
+              {/* ✅ Passa onLoadingChange para controlar overlay */}
+              <ImproveButton
+                value={resumo}
+                field="resumo"
+                onChange={applyResumoFromAI}
+                onLoadingChange={setResumoLoading}
+              />
             </div>
+
+            {/* ✅ Wrapper relativo para suportar overlay absoluto */}
+            <div className="relative">
+              {/* Textarea com highlight pós-IA */}
+              <textarea
+                className={`${withErr(!!show('resumo'))} h-28 w-full transition-colors duration-700 ${
+                  resumoFx ? 'bg-amber-50 ring-1 ring-amber-300' : ''
+                } ${resumoLoading ? 'opacity-90' : ''}`}
+                aria-invalid={!!show('resumo')}
+                placeholder="Máx. 600 caracteres"
+                value={resumo}
+                readOnly={resumoLoading} // ✅ impede digitação durante processamento
+                onChange={(e) =>
+                  dispatch({
+                    type: 'SET_DADOS',
+                    payload: { resumo: e.target.value },
+                  })
+                }
+              />
+
+              {/* ✅ OVERLAY durante melhoria: blur + pulse + spinner */}
+              {resumoLoading && (
+                <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-white/60 dark:bg-slate-900/50 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 animate-pulse">
+                    {/* spinner SVG simples */}
+                    <svg
+                      className="h-4 w-4 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4A4 4 0 008 12H4z"
+                      />
+                    </svg>
+                    <span>Melhorando seu texto…</span>
+                  </div>
+
+                  {/* barra fininha no topo (indeterminada) */}
+                  <div className="pointer-events-none absolute left-0 right-0 top-0 h-0.5 overflow-hidden">
+                    <div className="h-full w-1/3 animate-pulse bg-amber-400/80 rounded-r-full"></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {show('resumo') && (
               <p className="help text-red-600">{errors.resumo}</p>
             )}
