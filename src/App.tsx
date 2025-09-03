@@ -52,6 +52,13 @@ function Wizard() {
     }
   }, [step, state]);
 
+
+  function next() {
+    if (step === steps.length - 1) {
+      
+      console.log("Currículo finalizado:", state);
+      alert("Currículo concluído com sucesso!");
+      
   const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
@@ -75,7 +82,7 @@ function Wizard() {
 
   return (
     <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_2fr] bg-gray-100">
-      {/* Lado esquerdo = wizard */}
+     
       <div className="h-full overflow-y-auto p-6 bg-gray-50 border-r border-gray-200">
         <Stepper steps={steps} current={step} />
 
@@ -115,7 +122,6 @@ function Wizard() {
         </div>
       </div>
 
-      {/* Lado direito = preview em tempo real */}
       <div className="h-full overflow-y-auto p-6 bg-gray-100 hidden lg:flex justify-center items-start">
         <div className="bg-white shadow-xl rounded-lg w-[800px] min-h-[90%] p-8">
           <Review />

@@ -1,0 +1,25 @@
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+const exportarPDF = async () => {
+  const element = document.getElementById("cv"); // o container do seu CV
+  if (!element) return;
+
+  // Captura o HTML como canvas
+  const canvas = await html2canvas(element, { scale: 2 });
+  const imgData = canvas.toDataURL("image/png");
+
+  // Cria PDF A4 (210 x 297 mm)
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  // Calcula proporção para caber no PDF
+  const pdfWidth = 210;
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  // Adiciona imagem ao PDF
+  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+  // Salva o PDF com nome automático
+  const nomeUsuario = "NomeDoUsuario"; // pode pegar de state ou input
+  pdf.save(`CV-${nomeUsuario}.pdf`);
+};
