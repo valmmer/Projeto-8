@@ -1,172 +1,115 @@
-import { useResume } from '../state/ResumeContext';
+import { useResume } from "../state/ResumeContext";
 
 export default function Preview() {
   const { state } = useResume();
-  const { dados, skills, experiencias, formacoes, certificacoes, idiomas } =
-    state;
+  const { dados, skills, experiencias, formacoes, certificacoes, idiomas } = state;
 
-  // 'objetivo' pode não existir no tipo PersonalData -> acesso seguro
-  const objetivo: string | undefined = (dados as Record<string, any>)?.objetivo;
-
-  // numeração dinâmica das seções
-  const base = objetivo ? 2 : 1;
-  const nResumo = objetivo ? '2.' : '1.';
-  const nFormacao = `${base}.`;
-  const nHabs = `${base + 1}.`;
-  const nExp = `${base + 2}.`;
-  const nCert = `${base + 3}.`;
-  const nIdiomas = `${base + 4}.`;
+  const objetivo = (dados as Record<string, any>)?.objetivo;
 
   return (
-    <article className="max-w-3xl mx-auto text-black font-serif leading-relaxed">
+    <article className="max-w-3xl mx-auto text-black font-sans leading-relaxed">
       {/* Cabeçalho */}
-      <header className="mb-6">
-        <div className="flex items-center gap-4">
-          {dados.foto && (
-            <img
-              src={dados.foto}
-              alt={dados.nome || 'Foto'}
-              className="w-20 h-20 rounded-full object-cover border"
-            />
-          )}
-          <div className="flex-1 text-center">
-            <h1 className="text-2xl font-extrabold tracking-wide uppercase">
-              Curriculum Vitae
-            </h1>
-            <h2 className="text-xl font-semibold mt-1">
-              {dados.nome || 'Seu Nome'}
-            </h2>
-            <p className="text-sm">
-              {dados.email || 'email'} · {dados.telefone || 'telefone'} ·{' '}
-              {dados.linkedin || 'linkedin'}
-              {dados.cidadePais ? ` · ${dados.cidadePais}` : ''}
-              {(dados as any)?.dataNascimento
-                ? ` · Nasc.: ${(dados as any).dataNascimento}`
-                : ''}
-            </p>
-            {(dados as any)?.github || (dados as any)?.site ? (
-              <p className="text-sm">
-                {(dados as any)?.github
-                  ? `GitHub: ${(dados as any).github}`
-                  : ''}
-                {(dados as any)?.github && (dados as any)?.site ? ' · ' : ''}
-                {(dados as any)?.site ? `Site: ${(dados as any).site}` : ''}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <hr className="mt-4" />
+      <header className="mb-6 text-center">
+        {dados.foto && (
+          <img
+            src={dados.foto}
+            alt={dados.nome || "Foto"}
+            className="w-24 h-24 rounded-full mx-auto mb-2 border"
+          />
+        )}
+        <h1 className="text-3xl font-bold">{dados.nome || "Seu Nome"}</h1>
+        <p className="text-sm text-gray-700">
+          {dados.email || "email"} · {dados.telefone || "telefone"} · {dados.linkedin || "LinkedIn"}
+        </p>
       </header>
 
-      {/* 1. Objetivo (opcional) */}
-      {objetivo?.trim() ? (
-        <section className="mb-6">
-          <h3 className="font-bold text-lg mb-2">1. Objetivo Profissional</h3>
-          <p className="text-justify">{objetivo}</p>
+      {/* Objetivo */}
+      {objetivo?.trim() && (
+        <section className="mb-4">
+          <h2 className="font-semibold text-lg border-b border-gray-300">Objetivo Profissional</h2>
+          <p className="mt-1 text-justify">{objetivo}</p>
         </section>
-      ) : null}
+      )}
 
       {/* Resumo */}
-      <section className="mb-6">
-        <h3 className="font-bold text-lg mb-2">
-          {nResumo} Resumo Profissional
-        </h3>
-        <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
-          {dados.resumo || 'Escreva aqui um breve resumo profissional…'}
-        </p>
+      <section className="mb-4">
+        <h2 className="font-semibold text-lg border-b border-gray-300">Resumo Profissional</h2>
+        <p className="mt-1 text-justify">{dados.resumo || "Adicione um resumo profissional..."}</p>
       </section>
 
       {/* Formação */}
-      <section className="mb-6">
-        <h3 className="font-bold text-lg mb-2">
-          {nFormacao} Formação Acadêmica
-        </h3>
+      <section className="mb-4">
+        <h2 className="font-semibold text-lg border-b border-gray-300">Formação Acadêmica</h2>
         {formacoes.length ? (
-          <ul className="list-disc pl-6">
+          <ul className="list-disc pl-6 mt-1">
             {formacoes.map((f) => (
               <li key={f.id}>
                 <span className="font-medium">{f.curso}</span> — {f.instituicao}
-                {f.periodo ? ` (${f.periodo})` : ''}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas formações…</p>
+          <p className="mt-1">Adicione suas formações...</p>
         )}
       </section>
 
       {/* Habilidades */}
-      <section className="mb-6">
-        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">{nHabs} Habilidades</h3>
+      <section className="mb-4">
+        <h2 className="font-semibold text-lg border-b border-gray-300">Habilidades</h2>
         {skills.length ? (
-          <ul className="list-disc pl-6">
+          <ul className="list-disc pl-6 mt-1">
             {skills.map((s) => (
-              <li key={s.id}>
-                <span className="font-medium">{s.nome}</span> — {s.nivel}
-              </li>
+              <li key={s.id}>{s.nome} — {s.nivel}</li>
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas habilidades…</p>
+          <p className="mt-1">Adicione suas habilidades...</p>
         )}
       </section>
 
-      {/* Experiência */}
-      <section className="mb-6">
-        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
-          {nExp} Experiência Profissional
-        </h3>
+      {/* Experiências */}
+      <section className="mb-4">
+        <h2 className="font-semibold text-lg border-b border-gray-300">Experiência Profissional</h2>
         {experiencias.length ? (
-          <ul className="space-y-4">
+          <ul className="mt-1 space-y-2">
             {experiencias.map((e) => (
               <li key={e.id}>
-                <p className="font-semibold">
-                  {e.cargo} · {e.empresa}
-                </p>
-                <p className="text-sm italic text-slate-600">
-                  {e.periodo}
-                  {e.atual ? ' (atual)' : ''}
-                </p>
-                <p className="text-justify">{e.descricao}</p>
+                <p className="font-bold">{e.cargo} — {e.empresa}</p>
+                <p className="text-sm italic">{e.periodo}</p>
+                <p>{e.descricao}</p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas experiências…</p>
+          <p className="mt-1">Adicione suas experiências...</p>
         )}
       </section>
 
       {/* Certificações */}
-      <section className="mb-6">
-        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">{nCert} Certificações</h3>
+      <section className="mb-4">
+        <h2 className="font-semibold text-lg border-b border-gray-300">Certificações</h2>
         {certificacoes.length ? (
-          <ul className="list-disc pl-6">
+          <ul className="list-disc pl-6 mt-1">
             {certificacoes.map((c) => (
-              <li key={c.id}>
-                <span className="font-medium">{c.titulo}</span>
-                {c.orgao ? ` — ${c.orgao}` : ''}
-                {c.ano ? ` (${c.ano})` : ''}
-              </li>
+              <li key={c.id}>{c.titulo} — {c.orgao || ""}</li>
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione suas certificações…</p>
+          <p className="mt-1">Adicione suas certificações...</p>
         )}
       </section>
 
       {/* Idiomas */}
-      <section className="mb-2">
-        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">{nIdiomas} Idiomas</h3>
+      <section className="mb-4">
+        <h2 className="font-semibold text-lg border-b border-gray-300">Idiomas</h2>
         {idiomas.length ? (
-          <ul className="list-disc pl-6">
+          <ul className="list-disc pl-6 mt-1">
             {idiomas.map((l) => (
-              <li key={l.id}>
-                {l.idioma} — {l.nivel}
-              </li>
+              <li key={l.id}>{l.idioma} — {l.nivel}</li>
             ))}
           </ul>
         ) : (
-          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">Adicione seus idiomas…</p>
+          <p className="mt-1">Adicione seus idiomas...</p>
         )}
       </section>
     </article>
