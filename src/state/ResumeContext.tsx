@@ -31,22 +31,20 @@ function trimOrUndef(v: unknown): any {
 }
 
 /**
- * - Aparar espaços de todos os campos string
- * - Converter "" -> undefined nos opcionais (linkedin, github, site, cidadePais, dataNascimento, foto, objetivo* se quiser)
+ * Normaliza apenas campos que não atrapalham a digitação.
+ * ⚠️ NÃO aparar `resumo` e `objetivo` aqui (para não perder espaços finais durante onChange).
  */
 function cleanPersonalPayload(p: Partial<PersonalData>): Partial<PersonalData> {
   const out: Partial<PersonalData> = { ...p };
 
-  // aparar básicos
+  // aparar básicos que não são texto livre longo
   if (typeof out.nome === 'string') out.nome = out.nome.trim();
   if (typeof out.email === 'string') out.email = out.email.trim();
   if (typeof out.telefone === 'string') out.telefone = out.telefone.trim();
-  if (typeof out.resumo === 'string') out.resumo = out.resumo.trim();
 
-  // objetivo é opcional, mas normalmente queremos aparar (não transformar em undefined automaticamente)
-  if (typeof (out as any).objetivo === 'string') {
-    (out as any).objetivo = (out as any).objetivo.trim();
-  }
+  // ❌ NÃO aparar campos de texto livre (evita engolir espaços finais durante a digitação)
+  // if (typeof out.resumo === 'string') out.resumo = out.resumo.trim();
+  // if (typeof (out as any).objetivo === 'string') (out as any).objetivo = (out as any).objetivo.trim();
 
   // opcionais: "" -> undefined
   if ('linkedin' in out) out.linkedin = trimOrUndef(out.linkedin);

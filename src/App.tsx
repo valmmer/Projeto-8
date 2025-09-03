@@ -1,5 +1,5 @@
 // App.tsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ResumeProvider, useResume } from './state/ResumeContext';
 import PersonalForm from './components/PersonalForm';
 import ObjectiveForm from './components/ObjectiveForm';
@@ -12,7 +12,7 @@ import Stepper from './components/Stepper';
 import WizardNav from './components/WizardNav';
 import Review from './components/Review';
 
-// ✅ importe os validadores
+// ✅ validadores
 import {
   canProceedPersonal,
   canProceedObjectiveAndEducation,
@@ -38,10 +38,8 @@ function Wizard() {
   const canNext = useMemo(() => {
     switch (step) {
       case 0:
-        // Dados pessoais: usa o validador completo (nome, email, telefone, resumo etc.)
         return canProceedPersonal(state);
       case 1:
-        // Objetivo obrigatório + ao menos 1 Formação válida
         return canProceedObjectiveAndEducation(state);
       case 2:
         return state.skills.length >= 1;
@@ -54,14 +52,11 @@ function Wizard() {
     }
   }, [step, state]);
 
-  // avança 1 passo (sem passar do último)
   const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
-  // volta 1 passo (sem passar do primeiro)
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleNext = () => {
     if (!canNext) {
-      // Mensagem mais clara no passo 2
       if (step === 1) {
         window.alert(
           'Preencha o OBJETIVO e adicione ao menos UMA FORMAÇÃO válida para continuar.',
@@ -69,12 +64,11 @@ function Wizard() {
       } else {
         window.alert('Preencha todos os campos obrigatórios para continuar.');
       }
-      return; // não avança
+      return;
     }
     if (step < steps.length - 1) {
       next();
     } else {
-      // último passo: aqui você pode acionar "concluir" (ex.: gerar PDF/salvar)
       console.log('Wizard concluído');
     }
   };
@@ -107,7 +101,6 @@ function Wizard() {
         <div className="mt-8">
           <WizardNav
             canBack={step > 0}
-            // ✅ desabilita "Próximo" se inválido ou se já está no último passo
             canNext={canNext && step < steps.length - 1}
             onBack={back}
             onNext={handleNext}
@@ -133,6 +126,60 @@ function Wizard() {
 }
 
 export default function App() {
+  // 🔒 Guard global contra hotkeys que “comem” a barra de espaço
+  // Explicação:
+  // - Muitos apps têm listeners globais (em window/document) para atalhos.
+  // - Quando o foco está em um campo editável (INPUT/TEXTAREA/contentEditable),
+  //   queremos que a tecla SPACE funcione normalmente.
+  // - Aqui, nós NÃO damos preventDefault no campo; apenas paramos a propagação
+  //   para impedir que algum listener global intercepte a tecla Space.
+  useEffect(() => {
+    const isEditable = (t: EventTarget | null) => {
+      if (!(t instanceof HTMLElement)) return false;
+      const tag = t.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || t.isContentEditable;
+    };
+
+    const guardKey = (e: KeyboardEvent) => {
+      if ((e.key === ' ' || e.code === 'Space') && isEditable(e.target)) {
+        // deixa o campo inserir o espaço (sem preventDefault),
+        // mas impede listeners globais de capturar:
+        e.stopPropagation();
+        // alguns libs usam stopImmediatePropagation; tentamos também:
+        (e as any).stopImmediatePropagation?.();
+      }
+    };
+
+    const guardBeforeInput = (e: Event) => {
+      // Alguns libs escutam beforeinput. Paramos só a propagação.
+      const ie = e as any;
+      if (
+        ie?.inputType === 'insertText' &&
+        ie?.data === ' ' &&
+        isEditable(e.target)
+      ) {
+        e.stopPropagation();
+        (e as any).stopImmediatePropagation?.();
+      }
+    };
+
+    window.addEventListener('keydown', guardKey, { capture: true });
+    window.addEventListener('keypress', guardKey, { capture: true });
+    window.addEventListener('beforeinput', guardBeforeInput as any, {
+      capture: true,
+    });
+
+    return () => {
+      window.removeEventListener('keydown', guardKey, { capture: true } as any);
+      window.removeEventListener('keypress', guardKey, {
+        capture: true,
+      } as any);
+      window.removeEventListener('beforeinput', guardBeforeInput as any, {
+        capture: true,
+      });
+    };
+  }, []);
+
   return (
     <ResumeProvider>
       <Wizard />
