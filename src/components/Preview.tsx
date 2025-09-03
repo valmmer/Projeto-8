@@ -97,7 +97,7 @@ export default function Preview() {
 
       {/* Habilidades */}
       <section className="mb-6">
-        <h3 className="font-bold text-lg mb-2">{nHabs} Habilidades</h3>
+        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">{nHabs} Habilidades</h3>
         {skills.length ? (
           <ul className="list-disc pl-6">
             {skills.map((s) => (
@@ -113,7 +113,7 @@ export default function Preview() {
 
       {/* Experiência */}
       <section className="mb-6">
-        <h3 className="font-bold text-lg mb-2">
+        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
           {nExp} Experiência Profissional
         </h3>
         {experiencias.length ? (
@@ -138,7 +138,7 @@ export default function Preview() {
 
       {/* Certificações */}
       <section className="mb-6">
-        <h3 className="font-bold text-lg mb-2">{nCert} Certificações</h3>
+        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">{nCert} Certificações</h3>
         {certificacoes.length ? (
           <ul className="list-disc pl-6">
             {certificacoes.map((c) => (
@@ -156,7 +156,7 @@ export default function Preview() {
 
       {/* Idiomas */}
       <section className="mb-2">
-        <h3 className="font-bold text-lg mb-2">{nIdiomas} Idiomas</h3>
+        <h3 className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">{nIdiomas} Idiomas</h3>
         {idiomas.length ? (
           <ul className="list-disc pl-6">
             {idiomas.map((l) => (
