@@ -6,9 +6,29 @@ export default function Preview() {
 
   const objetivo = (dados as Record<string, any>)?.objetivo;
 
+  // monta a linha de contatos apenas com o que existir
+  const contactParts = [
+    dados.email?.trim(),
+    dados.telefone?.trim(),
+    dados.linkedin?.trim(), // ← só aparece se tiver
+    dados.cidadePais?.trim(),
+    (dados as any)?.dataNascimento?.trim()
+      ? `Nasc.: ${(dados as any).dataNascimento.trim()}`
+      : null,
+  ].filter(Boolean) as string[];
+
+  // linha extra (GitHub/Site) também opcional
+  const extraParts = [
+    (dados as any)?.github?.trim()
+      ? `GitHub: ${(dados as any).github.trim()}`
+      : null,
+    (dados as any)?.site?.trim() ? `Site: ${(dados as any).site.trim()}` : null,
+  ].filter(Boolean) as string[];
+
   return (
     <article className="max-w-3xl mx-auto text-black font-sans leading-relaxed">
       {/* Cabeçalho */}
+
       <header className="mb-6 text-center">
         {dados.foto && (
           <img
@@ -21,8 +41,40 @@ export default function Preview() {
         <p className="text-sm text-gray-700">
           {dados.email || "email"} · {dados.telefone || "telefone"} · {dados.linkedin || "LinkedIn"}
         </p>
-      </header>
+      <header className="mb-6">
+        <div className="flex items-center gap-4">
+          {dados.foto?.trim() && (
+            <img
+              src={dados.foto}
+              alt={dados.nome || 'Foto'}
+              className="w-20 h-20 rounded-full object-cover border"
+            />
+          )}
+          <div className="flex-1 text-center">
+            <h1 className="text-2xl font-extrabold tracking-wide uppercase">
+              Curriculum Vitae
+            </h1>
+            <h2 className="text-xl font-semibold mt-1">
+              {dados.nome || 'Seu Nome'}
+            </h2>
 
+            {/* Contatos — só mostra o que existe */}
+            {contactParts.length > 0 ? (
+              <p className="text-sm">{contactParts.join(' · ')}</p>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Preencha seus dados de contato…
+              </p>
+            )}
+
+            {/* GitHub / Site — também opcional */}
+            {extraParts.length > 0 && (
+              <p className="text-sm">{extraParts.join(' · ')}</p>
+            )}
+          </div>
+        </div>
+        <hr className="mt-4" />
+      </header>
       {/* Objetivo */}
       {objetivo?.trim() && (
         <section className="mb-4">
@@ -50,6 +102,9 @@ export default function Preview() {
           </ul>
         ) : (
           <p className="mt-1">Adicione suas formações...</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas formações…
+          </p>
         )}
       </section>
 
@@ -64,6 +119,9 @@ export default function Preview() {
           </ul>
         ) : (
           <p className="mt-1">Adicione suas habilidades...</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas habilidades…
+          </p>
         )}
       </section>
 
@@ -82,6 +140,9 @@ export default function Preview() {
           </ul>
         ) : (
           <p className="mt-1">Adicione suas experiências...</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas experiências…
+          </p>
         )}
       </section>
 
@@ -96,6 +157,9 @@ export default function Preview() {
           </ul>
         ) : (
           <p className="mt-1">Adicione suas certificações...</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione suas certificações…
+          </p>
         )}
       </section>
 
@@ -110,6 +174,9 @@ export default function Preview() {
           </ul>
         ) : (
           <p className="mt-1">Adicione seus idiomas...</p>
+          <p className="whitespace-pre-line break-words leading-relaxed text-justify [text-align-last:start]">
+            Adicione seus idiomas…
+          </p>
         )}
       </section>
     </article>
