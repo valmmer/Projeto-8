@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
-/* === Tema (v4) ===
-   Mapeia cores "brand-*" usadas no app (bg-brand-500 etc.)
-*/
+/* ============================================================
+   VARIANTES / MODO ESCURO (Tailwind v4)
+   ============================================================ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   THEME (tokens Tailwind v4) — cores da UI (não do PDF/ABNT)
+   ============================================================ */
 @theme {
   --color-brand-50:  #ecfdf5;
   --color-brand-100: #d1fae5;
@@ -14,8 +19,12 @@
   --color-brand-700: #047857;
   --color-brand-800: #065f46;
   --color-brand-900: #064e3b;
+
+  --radius-xl: 0.75rem;
+  --ring-brand: var(--color-brand-500);
 }
 
+<<<<<<< HEAD
 /* === Print A4 === */
 @media print {
 
@@ -63,16 +72,210 @@
 .section { @apply space-y-4; }
 .card { @apply bg-white rounded-2xl border shadow-sm; }
 .card-body { @apply p-5 md:p-6; }
-
-.field { @apply space-y-1; }
-.label { @apply text-sm font-medium text-slate-700; }
-.help  { @apply text-xs text-slate-500; }
-
-.input {
-  @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2
-  outline-none transition ring-0 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+=======
+/* ============================================================
+   BASE / ACESSIBILIDADE
+   ============================================================ */
+@layer base {
+  *:focus-visible { outline: 2px solid var(--ring-brand); outline-offset: 2px; }
+  ::selection { background-color: var(--color-brand-200); }
+  html, body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 }
 
+/* ============================================================
+   UTILITÁRIOS GERAIS (helpers de UI e export)
+   ============================================================ */
+@layer utilities {
+  /* Scrollbar discreta na UI */
+  .scrollbar { scrollbar-width: thin; scrollbar-color: var(--color-brand-400) transparent; }
+  .scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--color-brand-400); border-radius: 9999px; }
+  .scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+  /* Shimmer (desligado na exportação) */
+  @keyframes ai-shimmer { 0% { background-position-x: 0% } 100% { background-position-x: 200% } }
+  .ai-shimmer {
+    background-image: linear-gradient(90deg, rgba(251,191,36,0) 0%, rgba(251,191,36,.6) 50%, rgba(251,191,36,0) 100%);
+    background-size: 200% 100%; animation: ai-shimmer 1.2s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .ai-shimmer { animation: none } }
+>>>>>>> 78c7747 (Melhorias Visuais import e PDF)
+
+  /* Controle de quebras para impressão/export */
+  .no-split { break-inside: avoid-page; page-break-inside: avoid; } /* não quebrar dentro do bloco */
+  .keep-with-next { break-after: avoid-page; page-break-after: avoid; } /* mantém cabeçalho com o próximo bloco */
+  .page-break  { break-before: page; page-break-before: always; } /* forçar nova página */
+  .avoid-break { break-inside: avoid; } /* genérico */
+  .no-indent   { text-indent: 0 !important; } /* remove recuo ABNT onde não faz sentido */
+  .break-words { word-break: break-word; overflow-wrap: anywhere; } /* URLs longas etc. */
+}
+
+/* ============================================================
+   A4 + ABNT (NBR 14724) — página e tipografia do currículo
+   ============================================================ */
+
+/* Página A4 com margens ABNT via padding: 2,5 cm em todos os lados */
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 25mm;                 /* T R B L = 25mm (2,5 cm) */
+  background: #ffffff;           /* fundo branco sempre */
+  color: #0f172a;                /* texto neutro (aprox slate-900) */
+  box-shadow: 0 0 0.5rem rgba(0,0,0,.15); /* sombra só no preview */
+  position: relative;            /* p/ cálculos do export */
+}
+
+/* Tipografia ABNT padrão para conteúdo da página */
+.abnt, .abnt * {
+  font-family: "Times New Roman", Times, Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+
+/* Parágrafos justificados com recuo de 1,25cm */
+.abnt p {
+  text-align: justify;
+  text-indent: 1.25cm;
+  margin: 0 0 6pt;
+  hyphens: auto;
+}
+/* Parágrafos sem recuo (títulos, linhas de contato, bullets etc.) */
+.abnt p.no-indent { text-indent: 0; }
+
+/* Listas — garante bullets mesmo com reset do Tailwind */
+.abnt ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  padding-left: 18pt;
+  margin: 0 0 6pt;
+}
+.abnt li { margin: 0 0 3pt; break-inside: avoid; }
+.abnt li, .abnt li p { text-indent: 0; } /* itens de lista nunca têm recuo */
+
+/* Títulos e divisores */
+.abnt h1, .abnt h2, .abnt h3 {
+  font-weight: 700;
+  text-indent: 0;
+  margin: 0 0 8pt;
+}
+.abnt h1 { font-size: 14pt; }
+.abnt h2 { font-size: 13pt; }
+.abnt h3 { font-size: 12pt; }
+
+.abnt .sec {
+  text-transform: uppercase;
+  letter-spacing: 0;
+  padding-bottom: 4pt;
+  border-bottom: 0.5pt solid #cbd5e1;
+  margin: 12pt 0 6pt;
+}
+.abnt hr {
+  border: 0;
+  border-top: 0.5pt solid #cbd5e1;
+  margin: 10pt 0;
+}
+
+/* Protege a folha A4 do dark mode */
+.dark .page { background: #ffffff; color: #0f172a; }
+
+/* ===== Cabeçalho (foto + dados) — estável no preview e no PDF ===== */
+.header-grid {
+  display: grid;
+  grid-template-columns: 32mm 1fr;  /* foto fixa à esquerda */
+  gap: 8mm;
+  align-items: center;
+}
+.abnt img.photo {
+  width: 32mm;
+  height: 32mm;
+  object-fit: cover;
+  border: 0.5pt solid #cbd5e1;
+  border-radius: 2mm;
+  display: block;                  /* evita “descer” na linha */
+  background: #fff;                /* proteção p/ transparência */
+}
+.contact-lines p {                 /* 1 info por linha, sem recuo */
+  margin: 0;
+  text-indent: 0 !important;
+}
+
+/* Entradas e quebras seguras */
+.entry { margin: 6pt 0 8pt; }
+.no-split { break-inside: avoid-page; page-break-inside: avoid; }
+.keep-with-next { break-after: avoid-page; page-break-after: avoid; }
+.page-break { break-before: page; page-break-before: always; }
+
+/* ============================================================
+   COMPONENTES DE UI (formulários, cards, botões)
+   ============================================================ */
+.section       { @apply space-y-4; }
+.card          { @apply bg-white rounded-2xl border border-slate-200 shadow-sm; }
+.card-body     { @apply p-5 md:p-6; }
+.card-header   { @apply border-b border-slate-100 px-5 py-4; }
+.card-footer   { @apply border-t border-slate-100 px-5 py-4 flex items-center justify-end gap-3; }
+
+.section-head  { @apply mb-3 flex items-baseline justify-between; }
+.section-title { @apply text-2xl font-semibold tracking-tight; }
+.section-note  { @apply text-sm text-red-600 font-medium; }
+
+.field         { @apply space-y-1; }
+.label         { @apply block text-sm font-medium text-slate-700; }
+.help          { @apply text-xs text-slate-500; }
+
+.input {
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3 text-[15px] leading-6 h-11 outline-none transition
+         focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+}
+.input:disabled             { @apply opacity-60 cursor-not-allowed; }
+.input[aria-invalid="true"] { @apply border-red-500 ring-2 ring-red-500/20; }
+.input::placeholder         { @apply text-slate-400; }
+
+.textarea {
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-[15px] leading-6 min-h-[6.5rem] outline-none transition
+         focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+  resize: vertical;
+}
+.textarea:disabled            { @apply opacity-60 cursor-not-allowed; }
+.textarea[aria-invalid="true"]{ @apply border-red-500 ring-2 ring-red-500/20; }
+.textarea::placeholder        { @apply text-slate-400; }
+
+.btn           { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition; }
+.btn:disabled  { @apply opacity-60 cursor-not-allowed; }
+.btn-primary   { @apply bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 focus:ring-2 focus:ring-brand-500/30; }
+.btn-outline   { @apply border border-slate-300 text-slate-700 hover:bg-slate-50 active:bg-slate-100; }
+.btn-subtle    { @apply bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300; }
+.btn-danger    { @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800; }
+.btn-success   { @apply bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800; }
+.btn-sm        { @apply px-3 py-1.5 text-xs rounded-lg; }
+.btn-xs        { @apply px-2.5 py-1 text-[11px] leading-5 rounded-lg; }
+
+.kbd           { @apply inline-flex items-center rounded-md border border-slate-300 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium text-slate-700; }
+.badge         { @apply inline-flex items-center gap-1 rounded-full bg-brand-50 text-brand-700 px-2 py-0.5 text-xs; }
+.counter       { @apply text-xs text-slate-500; }
+.counter.error { @apply text-red-600; }
+
+.avatar-panel  { @apply rounded-2xl border border-slate-200 bg-slate-50/50 p-3; }
+.avatar-hint   { @apply mt-2 text-[11px] text-slate-500; }
+.avatar-panel .btn { @apply px-2.5 py-1 text-[11px] leading-5 rounded-lg whitespace-nowrap; }
+
+/* ============================================================
+   LAYOUT: FORM (esq) + PREVIEW (dir)
+   ============================================================ */
+.page-container { max-width: 1600px; margin: 0 auto; }
+
+.layout-2col {
+  display: grid;
+  grid-template-columns: 1fr;     /* mobile/tablet: 1 coluna */
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .layout-2col { grid-template-columns: 1fr 1fr; } /* desktop: 50/50 */
+}
+
+<<<<<<< HEAD
 .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium; }
 .btn-primary { @apply bg-brand-500 text-white hover:bg-brand-700; }
 .btn-outline { @apply border border-slate-300 hover:bg-slate-50; }
@@ -134,3 +337,99 @@
     box-shadow: none !important;
     background: white !important;
   }
+=======
+/* Preview “fixo” ao rolar no desktop */
+.preview-shell { position: sticky; top: 1rem; }
+
+/* Cartão do preview */
+.preview-card  {
+  background:#fff; border:1px solid rgb(226 232 240);
+  border-radius:1rem; box-shadow:0 2px 20px rgba(2,6,23,.06);
+  width:100%; max-width:none;
+}
+.preview-toolbar {
+  display:flex; align-items:center; justify-content:flex-end;
+  gap:.5rem; padding:.75rem 1rem; border-bottom:1px solid rgb(241 245 249);
+}
+.preview-body  { padding: 1rem 1.25rem; overflow-x:auto; }
+.preview-zoom  { width: 140px; }
+
+/* Canvas A4 (~96dpi). O zoom é aplicado via transform inline */
+.preview-canvas {
+  width:794px;         /* ≈ 210mm @ ~96dpi */
+  min-height:1123px;   /* ≈ 297mm @ ~96dpi */
+  transform-origin: top left;
+}
+
+/* ============================================================
+   DARK MODE — só na UI; a folha A4 não muda
+   ============================================================ */
+.dark .card        { @apply bg-slate-900 border-slate-700; }
+.dark .label       { @apply text-slate-200; }
+.dark .help        { @apply text-slate-400; }
+.dark .input,
+.dark .textarea    { @apply bg-slate-900 border-slate-700 text-slate-100; }
+.dark .input::placeholder,
+.dark .textarea::placeholder { @apply text-slate-500; }
+.dark .btn-outline { @apply border-slate-600 text-slate-200 hover:bg-slate-800; }
+.dark .avatar-panel{ @apply border-slate-700 bg-slate-800/50; }
+
+/* ============================================================
+   PRINT (saída A4 limpa; margens ABNT via padding da .page)
+   ============================================================ */
+@media print {
+  @page { size: A4; margin: 0; }
+
+  html, body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-size: 12pt; line-height: 1.5;
+  }
+
+  /* Esconde controles da UI */
+  .preview-toolbar, .btn, .no-print { display: none !important; }
+
+  /* Remove sombras/bordas no PDF */
+  .preview-card, .page { box-shadow: none !important; border: none !important; }
+
+  /* Evita cortes feios em elementos grandes */
+  h1, h2, h3, h4, h5, h6, .section, .entry, .no-split, .page {
+    break-inside: avoid-page; page-break-inside: avoid;
+  }
+}
+
+/* ============================================================
+   TEMPLATES (base — apenas estilo visual)
+   ============================================================ */
+.template-classic {
+  font-size: 12pt; line-height: 1.5;
+  font-family: "Times New Roman", Times, Georgia, serif;
+}
+.template-classic .sec {
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  font-weight: 700;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: .2rem;
+}
+.template-classic .sub { font-weight: 600; color: #334155; margin-top: .25rem; }
+
+.template-modern  {
+  font-size: 12pt; line-height: 1.5;
+  font-family: "Inter", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+}
+
+/* ============================================================
+   Overrides SOMENTE durante a exportação (aplicados por export.ts)
+   — cores seguras e sem sombras/efeitos no clone do html2canvas.
+   ============================================================ */
+.page.for-pdf, .page.for-pdf * {
+  color: #0f172a !important;
+  background: transparent !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+.page.for-pdf .ai-shimmer { animation: none !important; }
+>>>>>>> 78c7747 (Melhorias Visuais import e PDF)

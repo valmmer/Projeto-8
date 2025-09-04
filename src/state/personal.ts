@@ -1,15 +1,24 @@
-// personal.ts
-import type { PersonalData, ResumeState, Education } from "../types";
+// src/state/personal.ts
+// -----------------------------------------------------------
+// Validações dos dados pessoais e formação acadêmica
+// - Campos obrigatórios + formatos (email, telefone, URLs)
+// - Nascimento: faixa permitida (15–70 anos) + ISO yyyy-mm-dd
+// - Formação: período APENAS no formato "MM/AAAA - MM/AAAA" ou "MM/AAAA - Atual"
+//   (opcional: aceitar "YYYY" isolado quando allowSingleYear === true)
+// - Conveniências: isPersonalValid, firstPersonalError e validadores por passo
+// -----------------------------------------------------------
 
-// ===== Helpers (sem libs) =====
+import type { PersonalData, ResumeState, Education } from '../types';
+
+// ===== Helpers (sem libs externas) =====
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const urlRegex = /^https?:\/\/[\w.-]+(?:\.[\w.-]+)+(?:[^\s]*)$/i;
 const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const phoneAllowedChars = /^[0-9()+\-\s]+$/; // caracteres permitidos
-const onlyDigits = (s: string) => (s.match(/\d/g) ?? []).join("");
-const norm = (s: string) => s.normalize("NFC").trim();
+const phoneAllowedChars = /^[0-9()+\-\s]+$/; // caracteres permitidos no telefone
+const onlyDigits = (s: string) => (s.match(/\d/g) ?? []).join('');
+const norm = (s: string) => s.normalize('NFC').trim();
 
-// Domínios específicos (melhor UX)
+// Domínios específicos (melhor UX nas mensagens)
 const isLinkedin = (u: string) => /(^|\.)linkedin\.com\/?/i.test(u);
 const isGithub = (u: string) => /(^|\.)github\.com\/?/i.test(u);
 
@@ -17,11 +26,15 @@ const isGithub = (u: string) => /(^|\.)github\.com\/?/i.test(u);
 export type PersonalErrors = Partial<Record<keyof PersonalData, string>>;
 
 export type ValidatePersonalOpts = {
-  maxResumo?: number;        // default 600
-  maxObjetivo?: number;      // default 160
-  minAge?: number;           // default 14 (anos)
-  requireResumo?: boolean;   // default true
-  requireObjetivo?: boolean; // default false
+  maxResumo?: number;               // default 600
+  minResumo?: number;               // default 180  ← adicionamos esta opção
+  maxObjetivo?: number;             // default 160
+  minAge?: number;                  // default 15 (anos)
+  maxAge?: number;                  // default 70 (anos)
+  requireResumo?: boolean;          // default true
+  requireObjetivo?: boolean;        // default false
+  requireCidadePais?: boolean;      // default true
+  requireDataNascimento?: boolean;  // default true
 };
 
 // ---------- Formação Acadêmica ----------
@@ -41,55 +54,64 @@ export type ValidateEducationOpts = {
   allowSingleYear?: boolean;   // default false (aceitar "2017" isolado)
 };
 
-// ===== Validação Pessoal =====
+// ===========================================================
+// ================  VALIDACÃO DE PESSOAL  ===================
+// ===========================================================
 export function validatePersonal(
   dados: PersonalData,
-  opts?: ValidatePersonalOpts
+  opts?: ValidatePersonalOpts,
 ): PersonalErrors {
   const {
     maxResumo = 600,
+    minResumo = 180, // ✅ mínimo solicitado
     maxObjetivo = 160,
-    minAge = 14,
+    minAge = 15,
+    maxAge = 70,
     requireResumo = true,
     requireObjetivo = false,
+    requireCidadePais = true,
+    requireDataNascimento = true,
   } = opts ?? {};
 
   const errors: PersonalErrors = {};
 
   // -------- Obrigatórios básicos --------
-  if (!dados.nome?.trim()) errors.nome = "Informe seu nome completo.";
-  if (!dados.email?.trim()) errors.email = "Informe um email.";
-  if (!dados.telefone?.trim()) errors.telefone = "Informe um telefone.";
+  if (!dados.nome?.trim()) errors.nome = 'Informe seu nome completo.';
+  if (!dados.email?.trim()) errors.email = 'Informe um email.';
+  if (!dados.telefone?.trim()) errors.telefone = 'Informe um telefone.';
 
   if (requireResumo && !dados.resumo?.trim()) {
-    errors.resumo = "Escreva um breve resumo.";
+    errors.resumo = `Escreva um resumo (mín. ${minResumo}, máx. ${maxResumo} caracteres).`;
   }
   if (requireObjetivo && !dados.objetivo?.trim()) {
-    errors.objetivo = "Informe seu objetivo profissional.";
+    errors.objetivo = 'Informe seu objetivo profissional.';
+  }
+  if (requireCidadePais && !dados.cidadePais?.trim()) {
+    errors.cidadePais = 'Informe sua cidade e país.';
   }
 
-  // -------- Formatos --------
+  // -------- Formatos / limites --------
   // Nome
   if (dados.nome?.trim()) {
     const len = dados.nome.trim().length;
-    if (len < 3) errors.nome = "Nome muito curto.";
-    if (len > 120) errors.nome = "Nome muito longo.";
+    if (len < 3) errors.nome = 'Nome muito curto.';
+    if (len > 120) errors.nome = 'Nome muito longo.';
   }
 
   // Email
   if (dados.email && !emailRegex.test(dados.email)) {
-    errors.email = "Email inválido.";
+    errors.email = 'Email inválido.';
   }
 
-  // Telefone
+  // Telefone (somente dígitos e alguns símbolos, 8–15 dígitos)
   if (dados.telefone) {
     const tel = dados.telefone.trim();
     if (!phoneAllowedChars.test(tel)) {
-      errors.telefone = "Telefone contém caracteres inválidos.";
+      errors.telefone = 'Telefone contém caracteres inválidos.';
     } else {
       const digits = onlyDigits(tel);
       if (digits.length < 8 || digits.length > 15) {
-        errors.telefone = "Telefone deve ter entre 8 e 15 dígitos.";
+        errors.telefone = 'Telefone deve ter entre 8 e 15 dígitos.';
       }
     }
   }
@@ -98,9 +120,9 @@ export function validatePersonal(
   if (dados.linkedin) {
     const u = dados.linkedin.trim();
     if (!urlRegex.test(u)) {
-      errors.linkedin = "URL inválida (use https://...).";
+      errors.linkedin = 'URL inválida (use https://...).';
     } else if (!isLinkedin(u)) {
-      errors.linkedin = "Use uma URL do LinkedIn (linkedin.com/...).";
+      errors.linkedin = 'Use uma URL do LinkedIn (linkedin.com/...).';
     }
   }
 
@@ -108,47 +130,61 @@ export function validatePersonal(
   if (dados.github && dados.github.trim()) {
     const u = dados.github.trim();
     if (!urlRegex.test(u)) {
-      errors.github = "URL inválida (use https://...).";
+      errors.github = 'URL inválida (use https://...).';
     } else if (!isGithub(u)) {
-      errors.github = "Use uma URL do GitHub (github.com/...).";
+      errors.github = 'Use uma URL do GitHub (github.com/...).';
     }
   }
 
   // Site / Portfólio
   if (dados.site && dados.site.trim() && !urlRegex.test(dados.site.trim())) {
-    errors.site = "URL inválida (use https://...).";
+    errors.site = 'URL inválida (use https://...).';
   }
 
-  // Resumo
-  if (typeof dados.resumo === "string" && dados.resumo.length > maxResumo) {
-    errors.resumo = `Máx. ${maxResumo} caracteres.`;
+  // Resumo (tamanho mínimo/máximo)
+  if (typeof dados.resumo === 'string') {
+    const trimmed = dados.resumo.trim();
+    if (trimmed && trimmed.length < minResumo) {
+      errors.resumo = `Resumo muito curto (mín. ${minResumo} caracteres).`;
+    } else if (trimmed.length > maxResumo) {
+      errors.resumo = `Resumo muito longo (máx. ${maxResumo} caracteres).`;
+    }
   }
 
-  // Objetivo
-  if (typeof dados.objetivo === "string" && dados.objetivo.length > maxObjetivo) {
+  // Objetivo (tamanho máximo)
+  if (typeof dados.objetivo === 'string' && dados.objetivo.length > maxObjetivo) {
     errors.objetivo = `Máx. ${maxObjetivo} caracteres.`;
   }
 
-  // Cidade/País (opcional)
-  if (dados.cidadePais && dados.cidadePais.length > 80) {
-    errors.cidadePais = "Máx. 80 caracteres.";
+  // Cidade/País (limite de tamanho — se preenchido)
+  if (dados.cidadePais && dados.cidadePais.trim()) {
+    const len = dados.cidadePais.trim().length;
+    if (len < 3) errors.cidadePais = 'Muito curto.';
+    else if (len > 80) errors.cidadePais = 'Máx. 80 caracteres.';
   }
 
-  // Data de nascimento (opcional): ISO + range + idade mínima
-  if (dados.dataNascimento) {
-    if (!isoDateRegex.test(dados.dataNascimento)) {
-      errors.dataNascimento = "Use formato yyyy-mm-dd.";
+  // Data de nascimento: obrigatória + ISO yyyy-mm-dd + faixa 15–70 anos
+  const hoje = new Date();
+  if (!dados.dataNascimento?.trim()) {
+    if (requireDataNascimento) errors.dataNascimento = 'Informe sua data de nascimento.';
+  } else if (!isoDateRegex.test(dados.dataNascimento)) {
+    errors.dataNascimento = 'Use formato yyyy-mm-dd.';
+  } else {
+    // Fixa meia-noite local para evitar shifting por timezone
+    const d = new Date(dados.dataNascimento + 'T00:00:00');
+    if (isNaN(d.getTime())) {
+      errors.dataNascimento = 'Data inválida.';
     } else {
-      const d = new Date(dados.dataNascimento);
-      const min = new Date("1900-01-01");
-      const hoje = new Date();
-      if (isNaN(d.getTime()) || d < min || d > hoje) {
-        errors.dataNascimento = "Data inválida.";
-      } else {
-        const idade = diffYears(d, hoje);
-        if (idade < minAge) {
-          errors.dataNascimento = `Idade mínima: ${minAge} anos.`;
-        }
+      // nascimento mais recente permitido (deve ter pelo menos minAge anos)
+      const maxBirth = new Date(hoje);
+      maxBirth.setFullYear(hoje.getFullYear() - minAge);
+      // nascimento mais antigo permitido (no máx. maxAge anos)
+      const minBirth = new Date(hoje);
+      minBirth.setFullYear(hoje.getFullYear() - maxAge);
+
+      if (d < minBirth || d > maxBirth) {
+        const fmt = (dt: Date) => dt.toLocaleDateString('pt-BR');
+        errors.dataNascimento = `A data deve estar entre ${fmt(minBirth)} e ${fmt(maxBirth)} (idade entre ${maxAge} e ${minAge} anos).`;
       }
     }
   }
@@ -156,7 +192,7 @@ export function validatePersonal(
   return errors;
 }
 
-// ===== Helpers de data =====
+// ===== Helpers de data (se precisar no futuro) =====
 function diffYears(a: Date, b: Date) {
   let years = b.getFullYear() - a.getFullYear();
   const m = b.getMonth() - a.getMonth();
@@ -164,63 +200,63 @@ function diffYears(a: Date, b: Date) {
   return years;
 }
 
-// ====== Formação Acadêmica ======
+// ===========================================================
+// ============  VALIDACÃO DE FORMAÇÃO (Edu)  ================
+// ===========================================================
 
-// Normaliza separadores e capitaliza "Atual"
+/**
+ * Normaliza o texto do período:
+ * - unifica travessão (–, —) para "-"
+ * - capitaliza "Atual"
+ */
 function normalizePeriodo(p: string) {
   let s = norm(p);
-  // unificar travessão: -, – ou —
-  s = s.replace(/[–—]/g, "-");
-  // Padroniza "Atual"
-  s = s.replace(/\batual\b/gi, "Atual");
+  s = s.replace(/[–—]/g, '-');
+  s = s.replace(/\batual\b/gi, 'Atual');
   return s;
 }
 
 /**
- * Aceita formatos:
- *  - YYYY - YYYY
- *  - YYYY - Atual
- *  - MM/YYYY - MM/YYYY
- *  - MM/YYYY - Atual
- * (com ou sem espaços ao redor do "-")
- * Se allowSingleYear, aceita também: YYYY
+ * ✅ Parse de período SOMENTE no formato:
+ *   - MM/AAAA - MM/AAAA
+ *   - MM/AAAA - Atual
+ *   (Opcional) Se opts.allowSingleYear === true, aceita também "YYYY" isolado.
+ *
+ * Retorna valores numéricos para comparação (YYYYMM):
+ *  - start: y1*100 + mm1
+ *  - end: y2*100 + mm2 (quando houver)
  */
 function parsePeriodo(
   periodoRaw: string,
-  opts?: { allowSingleYear?: boolean }
+  opts?: { allowSingleYear?: boolean },
 ): { ok: boolean; start?: number; end?: number; openEnded?: boolean } {
   const allowSingleYear = !!opts?.allowSingleYear;
   const p = normalizePeriodo(periodoRaw);
 
-  const yearRange = /^\s*(\d{4})\s*-\s*(\d{4}|Atual)\s*$/i;
+  // MM/AAAA - MM/AAAA | MM/AAAA - Atual
   const monthYearRange = /^\s*(\d{2})\/(\d{4})\s*-\s*(?:(\d{2})\/(\d{4})|Atual)\s*$/i;
+  // Opcional: "YYYY" isolado (para migração/legado)
   const singleYear = /^\s*(\d{4})\s*$/;
 
-  // YYYY - YYYY | YYYY - Atual
-  let m = p.match(yearRange);
+  const m = p.match(monthYearRange);
   if (m) {
-    const y1 = Number(m[1]);
-    const y2 = m[2].toLowerCase?.() === "atual" ? null : Number(m[2]);
-    const start = y1 * 100 + 1; // mês fictício 01
-    const end = y2 ? y2 * 100 + 12 : undefined;
-    return { ok: true, start, end, openEnded: y2 == null };
-  }
-
-  // MM/YYYY - MM/YYYY | MM/YYYY - Atual
-  m = p.match(monthYearRange);
-  if (m) {
-    const mm1 = Number(m[1]),
-      y1 = Number(m[2]);
+    const mm1 = Number(m[1]);
+    const y1 = Number(m[2]);
     const mm2 = m[3] ? Number(m[3]) : undefined;
     const y2 = m[4] ? Number(m[4]) : undefined;
+
+    // meses 01–12
     if (mm1 < 1 || mm1 > 12) return { ok: false };
     if (mm2 && (mm2 < 1 || mm2 > 12)) return { ok: false };
+
     const start = y1 * 100 + mm1;
     const end = y2 && mm2 ? y2 * 100 + mm2 : undefined;
+
     return { ok: true, start, end, openEnded: !end };
   }
 
-  // YYYY (opcional)
+  // ⚠️ Não aceitamos mais "YYYY - YYYY".
+  // Aceita "YYYY" isolado somente se explicitamente permitido:
   if (allowSingleYear && singleYear.test(p)) {
     const y = Number(p.match(singleYear)![1]);
     return { ok: true, start: y * 100 + 1, end: y * 100 + 12, openEnded: false };
@@ -229,41 +265,58 @@ function parsePeriodo(
   return { ok: false };
 }
 
+/**
+ * Valida um item de Formação:
+ * - Curso e Instituição obrigatórios
+ * - Período obrigatório no formato MM/AAAA - MM/AAAA (ou MM/AAAA - Atual)
+ * - Meses 01–12, e início <= fim quando houver fim
+ */
 export function validateEducationItem(
   e: Education,
-  opts?: ValidateEducationOpts
+  opts?: ValidateEducationOpts,
 ): EducationItemErrors {
   const { allowSingleYear = false } = opts ?? {};
   const errs: EducationItemErrors = {};
 
-  // Curso/Instituição obrigatórios
-  if (!e.curso?.trim()) errs.curso = "Informe o curso.";
-  if (!e.instituicao?.trim()) errs.instituicao = "Informe a instituição.";
+  // Obrigatórios
+  if (!e.curso?.trim()) errs.curso = 'Informe o curso.';
+  if (!e.instituicao?.trim()) errs.instituicao = 'Informe a instituição.';
 
-  // Período obrigatório + formato
-  if (!e.periodo?.trim()) {
-    errs.periodo = "Informe o período (ex.: 2016 - 2017 ou 01/2016 - 12/2017).";
-  } else {
-    const parsed = parsePeriodo(e.periodo, { allowSingleYear });
-    if (!parsed.ok) {
-      errs.periodo = "Período inválido. Use YYYY - YYYY ou MM/YYYY - MM/YYYY.";
-    } else if (parsed.end && parsed.start! > parsed.end) {
-      errs.periodo = "Período inicial deve ser anterior ao final.";
-    }
+  // Período
+  const raw = (e.periodo || '').trim();
+  if (!raw) {
+    errs.periodo = 'Informe o período (ex.: 03/2016 - 12/2017).';
+    return errs;
+  }
+
+  const parsed = parsePeriodo(raw, { allowSingleYear });
+  if (!parsed.ok) {
+    errs.periodo = 'Período inválido. Use MM/AAAA - MM/AAAA ou MM/AAAA - Atual.';
+    return errs;
+  }
+
+  if (parsed.end && parsed.start! > parsed.end) {
+    errs.periodo = 'Período inicial deve ser anterior ao final.';
+    return errs;
   }
 
   return errs;
 }
 
+/**
+ * Valida a lista de formações:
+ * - exige ao menos uma (por padrão)
+ * - agrega erros por id
+ */
 export function validateEducations(
   list: Education[],
-  opts?: ValidateEducationOpts
+  opts?: ValidateEducationOpts,
 ): EducationErrors {
   const { requireAtLeastOne = true } = opts ?? {};
   const byId: Record<string, EducationItemErrors> = {};
 
   if (requireAtLeastOne && (!list || list.length === 0)) {
-    return { byId, list: "Adicione ao menos uma formação." };
+    return { byId, list: 'Adicione ao menos uma formação.' };
   }
 
   for (const e of list ?? []) {
@@ -273,42 +326,41 @@ export function validateEducations(
   return { byId };
 }
 
-// ===== Conveniências =====
-export function isPersonalValid(
-  dados: PersonalData,
-  opts?: ValidatePersonalOpts
-) {
+// ===========================================================
+// ================  CONVENIÊNCIAS DO APP  ===================
+// ===========================================================
+
+/** Retorna true se não houver nenhum erro nos dados pessoais (com flags) */
+export function isPersonalValid(dados: PersonalData, opts?: ValidatePersonalOpts) {
   return Object.keys(validatePersonal(dados, opts)).length === 0;
 }
 
+/** Retorna a primeira mensagem de erro encontrada (útil para alerta simples) */
 export function firstPersonalError(
   dados: PersonalData,
-  opts?: ValidatePersonalOpts
+  opts?: ValidatePersonalOpts,
 ): string | null {
   const e = validatePersonal(dados, opts);
   const key = Object.keys(e)[0] as keyof PersonalData | undefined;
   return key ? e[key]! : null;
 }
 
-// valida o passo de Dados Pessoais
-export function canProceedPersonal(
-  state: ResumeState,
-  opts?: ValidatePersonalOpts
-) {
+/** Passo 0: Dados Pessoais */
+export function canProceedPersonal(state: ResumeState, opts?: ValidatePersonalOpts) {
   return isPersonalValid(state.dados, opts);
 }
 
-// ✅ valida o passo "Objetivo & Formação"
+/** Passo 1: Objetivo & Formação (objetivo obrigatório + ao menos 1 formação válida) */
 export function canProceedObjectiveAndEducation(
   state: ResumeState,
   personalOpts?: ValidatePersonalOpts,
-  eduOpts?: ValidateEducationOpts
+  eduOpts?: ValidateEducationOpts,
 ) {
-  // objetivo obrigatório neste passo
+  // objetivo obrigatório neste passo; resumo já foi exigido no passo 0
   const pOk = isPersonalValid(state.dados, {
     ...personalOpts,
-    requireResumo: false,      // resumo já foi exigido no passo 0
-    requireObjetivo: true,     // objetivo obrigatório aqui
+    requireResumo: false,
+    requireObjetivo: true,
     maxObjetivo: personalOpts?.maxObjetivo ?? 160,
   });
 
@@ -319,9 +371,7 @@ export function canProceedObjectiveAndEducation(
 
   const hasEduErrors =
     !!edu.list ||
-    Object.values(edu.byId).some(
-      (it) => it.curso || it.instituicao || it.periodo
-    );
+    Object.values(edu.byId).some((it) => it.curso || it.instituicao || it.periodo);
 
   return pOk && !hasEduErrors;
 }

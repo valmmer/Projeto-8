@@ -1,8 +1,16 @@
 // src/types.ts
 
 /** Nível de habilidade (skills) */
+// src/types.ts
 export type SkillLevel = "Básico" | "Intermediário" | "Avançado";
 
+export interface Skill {
+  id: string;
+  nome: string;
+  nivel: SkillLevel;
+  /** Opcional: classifica habilidade (sem quebrar código antigo) */
+  tipo?: 'Hard' | 'Soft';
+} 
 /** Dados pessoais do currículo */
 export interface PersonalData {
   /** Obrigatórios básicos */

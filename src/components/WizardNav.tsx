@@ -1,34 +1,15 @@
-
-import React from "react";
+// src/components/WizardNav.tsx
+import React from 'react';
 
 type WizardNavProps = {
   canBack: boolean;
   canNext: boolean;
-  isLastStep?: boolean; // indica se é a última etapa
+  isLastStep?: boolean; // última etapa?
   onBack: () => void;
   onNext: () => void;
   onFinish?: () => void; // chamado ao finalizar
-  nextLabel?: string; // label do botão próximo
-  finishLabel?: string; // label do botão finalizar
-};
-
-// WizardNav.tsx
-// -----------------------------------------------------------
-// Navegação do wizard com proteção de atalhos de teclado:
-// - Se o usuário estiver digitando em input/textarea/contentEditable,
-//   não deixamos a tecla Space (ou outros atalhos) "subirem" e
-//   dispararem ações globais (ex.: avançar etapa).
-// - Mantemos comportamento normal dos botões.
-// -----------------------------------------------------------
-
-import React from 'react';
-
-type Props = {
-  canBack: boolean;
-  canNext: boolean;
-  onBack: () => void;
-  onNext: () => void;
-  nextLabel?: string;
+  nextLabel?: string; // texto do botão "Próximo"
+  finishLabel?: string; // texto do botão "Finalizar"
 };
 
 /** Verifica se o alvo do evento é um campo editável (onde o usuário digita). */
@@ -40,7 +21,6 @@ function isEditable(target: EventTarget | null) {
   if (tag === 'textarea') return true;
   if (tag === 'input') {
     const type = (el as HTMLInputElement).type?.toLowerCase() || 'text';
-    // tipos "não-editáveis" (onde Space não deveria virar caractere)
     const nonText = [
       'button',
       'submit',
@@ -58,52 +38,41 @@ function isEditable(target: EventTarget | null) {
   return false;
 }
 
-
-export default function WizardNav({
+const WizardNav: React.FC<WizardNavProps> = ({
   canBack,
   canNext,
   isLastStep = false,
   onBack,
   onNext,
   onFinish,
-  nextLabel = "Próximo",
-  finishLabel = "Finalizar",
-}: WizardNavProps) {
-  const handleNext = () => {
-    if (isLastStep && onFinish) {
-      onFinish();
-    } else {
-      onNext();
-    }
-  };
   nextLabel = 'Próximo',
-}: Props) {
-  function handleNext() {
+  finishLabel = 'Finalizar',
+}) => {
+  const handleNext = () => {
     if (!canNext) {
       alert(
         '⚠️ Por favor, complete todos os campos obrigatórios antes de continuar.',
       );
       return;
     }
-    onNext();
-  }
+    if (isLastStep && onFinish) {
+      onFinish();
+    } else {
+      onNext();
+    }
+  };
 
   /**
    * CAPTURA (capturing) de teclas no container:
    * - Se a origem for um campo editável, não deixamos o evento "subir"
-   *   para listeners globais que possam chamar preventDefault na barra de espaço.
-   * - Isso resolve o caso de a Space ser “comida” por algum atalho global.
+   *   para listeners globais que possam capturar a barra de espaço.
    */
-  function onKeyDownCapture(e: React.KeyboardEvent<HTMLDivElement>) {
+  const onKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (isEditable(e.target)) {
-      // Evita que atalhos globais (em App/Window) interceptem a Space
-      e.stopPropagation();
-      // Não fazemos preventDefault aqui: deixamos o campo inserir a tecla normalmente
+      e.stopPropagation(); // deixa o campo inserir a tecla normalmente
       return;
     }
-
-    // (Opcional) atalhos quando NÃO está em campo editável:
-    // Enter para avançar e Shift+Enter para voltar
+    // Atalhos quando NÃO está em campo editável:
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleNext();
@@ -114,18 +83,21 @@ export default function WizardNav({
       if (canBack) onBack();
       return;
     }
-  }
+  };
 
-  /**
-   * Para o botão "Próximo", tratamos Enter/Space quando o próprio
-   * botão está focado (comportamento nativo + amigável).
-   */
-  function onNextKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+  /** Teclas quando o botão Próximo/Finalizar está focado */
+  const onNextKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if ((e.key === 'Enter' || e.key === ' ') && canNext) {
-      e.preventDefault(); // evita scroll com Space, etc.
+      e.preventDefault(); // evita scroll com Space
       handleNext();
     }
-  }
+  };
+
+  const nextBtnClasses = `px-4 py-2 rounded-xl text-white disabled:opacity-50 ${
+    canNext
+      ? 'bg-brand-500 hover:bg-brand-700'
+      : 'bg-gray-400 cursor-not-allowed'
+  }`;
 
   return (
     <div
@@ -147,18 +119,13 @@ export default function WizardNav({
         disabled={!canNext}
         aria-disabled={!canNext}
         onClick={handleNext}
-        className="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-700 text-white disabled:opacity-50"
-        onClick={handleNext}
         onKeyDown={onNextKeyDown}
-        className={`px-4 py-2 rounded-xl text-white disabled:opacity-50 ${
-          canNext
-            ? 'bg-brand-500 hover:bg-brand-700'
-            : 'bg-gray-400 cursor-not-allowed'
-        }`}
-        aria-disabled={!canNext}
+        className={nextBtnClasses}
       >
         {isLastStep ? finishLabel : nextLabel}
       </button>
     </div>
   );
-}
+};
+
+export default WizardNav;
