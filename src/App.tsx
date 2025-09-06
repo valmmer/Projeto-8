@@ -1,32 +1,31 @@
 // src/App.tsx
 // ============================================================================
 // Wizard do currículo com layout responsivo e preview “sticky” no desktop.
-// Etapa 6 usa o painel <Review /> centralizado; etapas 0..4 mostram o
-// <ResumePreview> fixo na coluna direita.
+// Etapa 6 usa o painel <Review />; etapas 0..4 mostram o <ResumePreview> à direita.
+// Dependência de PDF: servidor (Puppeteer) + impressão nativa (print.css).
 // ============================================================================
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { ResumeProvider, useResume } from './state/ResumeContext';
-
 import PersonalForm from './components/PersonalForm';
 import ObjectiveForm from './components/ObjectiveForm';
 import SkillsForm from './components/SkillsForm';
 import ExperienceForm from './components/ExperienceForm';
-import CertificationsForm from './components/CertificationsForm';
+import CertificationsForm from './components/CertificationsForm'; // ✅ caminho corrigido
 import LanguagesForm from './components/LanguagesForm';
-
 import Stepper from './components/Stepper';
 import WizardNav from './components/WizardNav';
-
-// ✅ Agora o Review está fora de /preview
 import Review from './components/Review';
-import ResumePreview, {
-  type ResumeTemplateId,
-} from './components/preview/ResumePreview';
+
+// ✅ componente default + tipo via "import type"
+import ResumePreview from './components/preview/ResumePreview';
+import type { ResumeTemplateId } from './components/preview/ResumePreview';
+
+// 🔗 Botão “Baixar PDF (servidor)” — chama /api/print/pdf (Puppeteer)
+import { downloadServerPDF } from './lib/serverPrint';
 
 // ---------------------------------------------------------------------------
-// Validações mínimas inline (substituem o antigo ./state/personal)
-// Depois podemos mover para src/state/validators.ts se preferir.
+// Validações mínimas inline (pode mover para src/state/validators.ts)
 // ---------------------------------------------------------------------------
 type AnyState =
   ReturnType<typeof useResume> extends infer R
@@ -38,13 +37,11 @@ type AnyState =
 function isNonEmpty(str: unknown) {
   return typeof str === 'string' && str.trim().length > 0;
 }
-
 function validateEmail(email?: string) {
   if (!email) return 'Informe um e-mail.';
   const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return ok ? undefined : 'E-mail inválido.';
 }
-
 function validatePersonal(
   dados: AnyState extends { dados: infer D } ? D : any,
 ) {
@@ -57,13 +54,10 @@ function validatePersonal(
     errors.cidadePais = 'Informe cidade/país.';
   return errors;
 }
-
 function canProceedObjectiveAndEducation(state: AnyState) {
   const hasObjetivo = isNonEmpty((state as any)?.dados?.objetivo);
   const edus = (state as any)?.formacoes ?? [];
   const hasEdu = Array.isArray(edus) && edus.length >= 1;
-  // Se quiser ser mais rígido:
-  // const validEdu = edus.some((f: any) => isNonEmpty(f?.instituicao) && isNonEmpty(f?.curso));
   return hasObjetivo && hasEdu;
 }
 
@@ -85,7 +79,10 @@ function useMediaQuery(query: string) {
 function Wizard() {
   const { state } = useResume();
   const [step, setStep] = useState(0);
-  const [template, setTemplate] = useState<ResumeTemplateId>('classico'); // ✅ estado do modelo
+
+  // ✅ template do currículo (conforme ResumePreview exporta)
+  const [template, setTemplate] = useState<ResumeTemplateId>('classico');
+
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   // ---------------- Passos e validações ----------------
@@ -201,7 +198,7 @@ function Wizard() {
 
         <div className="mt-6 flex justify-center">
           <div className="w-full max-w-[980px]">
-            {/* ✅ Review aceita template e devolve onTemplateChange */}
+            {/* Escolha de template e revisão final */}
             <Review template={template} onTemplateChange={setTemplate} />
           </div>
         </div>
@@ -297,19 +294,22 @@ function Wizard() {
                 >
                   Ajustar
                 </button>
+
+                {/* 🖨️ Impressão nativa (usa print.css) */}
                 <button
                   className="btn btn-outline"
                   onClick={() => window.print()}
                 >
                   Imprimir
                 </button>
-                {/* PDF aqui é opcional; o Review já oferece a geração também */}
+
+                {/* 📄 PDF do servidor (Puppeteer + @media print) */}
                 <button
                   className="btn btn-primary"
-                  onClick={() => window.print()}
-                  title="Use a etapa Revisão para gerar PDF com mais controle"
+                  onClick={() => downloadServerPDF()}
+                  title="Gera PDF com texto selecionável no servidor"
                 >
-                  Gerar PDF
+                  Baixar PDF (servidor)
                 </button>
               </div>
 
@@ -318,7 +318,7 @@ function Wizard() {
                   className="preview-canvas"
                   style={{ transform: `scale(${effectiveZoom})` }}
                 >
-                  {/* ✅ Usa o mesmo modelo escolhido */}
+                  {/* Usa o mesmo modelo escolhido */}
                   <ResumePreview template={template} />
                 </div>
               </div>

@@ -3,7 +3,7 @@
 // Objetivo + Formação Acadêmica (quebrada em componentes).
 // - IA melhora o rascunho SEM trocar de área/tema (respeita "desenvolvimento", etc).
 // - 1 frase, ≤160 chars, sem "Objetivo:" e sem aspas.
-// - A lista de formação foi movida para src/components/education/*
+// - A lista de formação está em src/components/education/*
 // ---------------------------------------------------------------------------
 
 import React, { useMemo, useState } from 'react';
@@ -261,8 +261,11 @@ export default function ObjectiveForm() {
         </div>
       </div>
 
-      {/* CARD 2 — Formação Acadêmica (componente dedicado) */}
-      <EducationSection />
+      {/* CARD 2 — Formação Acadêmica (ligado ao contexto) */}
+      <EducationSection
+        value={state.formacoes || []}
+        onChange={(next) => dispatch({ type: 'SET_EDUS', payload: next })} // ✅ usa a action que já existe
+      />
     </section>
   );
 }

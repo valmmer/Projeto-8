@@ -47,12 +47,12 @@ export interface Experience {
 }
 
 /** Formação acadêmica */
-export interface Education {
+export type Education = {
   id: string;
-  curso: string;
   instituicao: string;
-  periodo: string;    // ex.: "2016 — 2017"
-}
+  curso: string;
+  periodo: string;   // "MM/YYYY - MM/YYYY" | "MM/YYYY - Atual"
+};
 
 /** Certificação */
 export interface Certification {

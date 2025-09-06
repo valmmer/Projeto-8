@@ -1,13 +1,10 @@
 @import "tailwindcss";
+@import "./styles/print.css";
 
-/* ============================================================
-   VARIANTES / MODO ESCURO (Tailwind v4)
-   ============================================================ */
+/* ====================== VARIANTES / DARK ====================== */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ============================================================
-   THEME (tokens Tailwind v4) — cores da UI (não do PDF/ABNT)
-   ============================================================ */
+/* ====================== THEME (tokens UI) ===================== */
 @theme {
   --color-brand-50:  #ecfdf5;
   --color-brand-100: #d1fae5;
@@ -24,192 +21,29 @@
   --ring-brand: var(--color-brand-500);
 }
 
-<<<<<<< HEAD
-/* === Print A4 === */
-@media print {
-
-  @page {
-    size: A4;
-    margin: 2cm;
-  }
-}
-  body {
-    background: white !important;
-    
-  }
-
-  @page { size: A4; margin: 2.5cm; }
-  body { background: white !important; }
-  .grid { display: block !important; }
-  .grid > :first-child { display: none !important; }
-  .grid > :last-child {
-    display: block !important;
-    padding: 0 !important;
-    background: white !important;
-    
-  }
-}
-@media print {
-  body {
-    -webkit-print-color-adjust: exact; /* mantém cores de fundo */
-  }
-
-  .print-container {
-    width: 210mm; /* A4 */
-    min-height: 297mm;
-    padding: 20mm;
-    margin: 0 auto;
-    box-shadow: none;
-    border: none;
-  }
-
-  .no-print {
-    display: none; /* esconde botões */
-  }
-}
-
-/* === Utilitários do app === */
-.section { @apply space-y-4; }
-.card { @apply bg-white rounded-2xl border shadow-sm; }
-.card-body { @apply p-5 md:p-6; }
-=======
-/* ============================================================
-   BASE / ACESSIBILIDADE
-   ============================================================ */
+/* ====================== BASE / A11Y =========================== */
 @layer base {
   *:focus-visible { outline: 2px solid var(--ring-brand); outline-offset: 2px; }
   ::selection { background-color: var(--color-brand-200); }
   html, body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 }
 
-/* ============================================================
-   UTILITÁRIOS GERAIS (helpers de UI e export)
-   ============================================================ */
+/* ====================== UTILITÁRIOS UI ======================== */
 @layer utilities {
-  /* Scrollbar discreta na UI */
   .scrollbar { scrollbar-width: thin; scrollbar-color: var(--color-brand-400) transparent; }
   .scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
   .scrollbar::-webkit-scrollbar-thumb { background: var(--color-brand-400); border-radius: 9999px; }
   .scrollbar::-webkit-scrollbar-track { background: transparent; }
 
-  /* Shimmer (desligado na exportação) */
   @keyframes ai-shimmer { 0% { background-position-x: 0% } 100% { background-position-x: 200% } }
   .ai-shimmer {
     background-image: linear-gradient(90deg, rgba(251,191,36,0) 0%, rgba(251,191,36,.6) 50%, rgba(251,191,36,0) 100%);
     background-size: 200% 100%; animation: ai-shimmer 1.2s linear infinite;
   }
   @media (prefers-reduced-motion: reduce) { .ai-shimmer { animation: none } }
->>>>>>> 78c7747 (Melhorias Visuais import e PDF)
-
-  /* Controle de quebras para impressão/export */
-  .no-split { break-inside: avoid-page; page-break-inside: avoid; } /* não quebrar dentro do bloco */
-  .keep-with-next { break-after: avoid-page; page-break-after: avoid; } /* mantém cabeçalho com o próximo bloco */
-  .page-break  { break-before: page; page-break-before: always; } /* forçar nova página */
-  .avoid-break { break-inside: avoid; } /* genérico */
-  .no-indent   { text-indent: 0 !important; } /* remove recuo ABNT onde não faz sentido */
-  .break-words { word-break: break-word; overflow-wrap: anywhere; } /* URLs longas etc. */
 }
 
-/* ============================================================
-   A4 + ABNT (NBR 14724) — página e tipografia do currículo
-   ============================================================ */
-
-/* Página A4 com margens ABNT via padding: 2,5 cm em todos os lados */
-.page {
-  width: 210mm;
-  min-height: 297mm;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding: 25mm;                 /* T R B L = 25mm (2,5 cm) */
-  background: #ffffff;           /* fundo branco sempre */
-  color: #0f172a;                /* texto neutro (aprox slate-900) */
-  box-shadow: 0 0 0.5rem rgba(0,0,0,.15); /* sombra só no preview */
-  position: relative;            /* p/ cálculos do export */
-}
-
-/* Tipografia ABNT padrão para conteúdo da página */
-.abnt, .abnt * {
-  font-family: "Times New Roman", Times, Georgia, serif;
-  font-size: 12pt;
-  line-height: 1.5;
-}
-
-/* Parágrafos justificados com recuo de 1,25cm */
-.abnt p {
-  text-align: justify;
-  text-indent: 1.25cm;
-  margin: 0 0 6pt;
-  hyphens: auto;
-}
-/* Parágrafos sem recuo (títulos, linhas de contato, bullets etc.) */
-.abnt p.no-indent { text-indent: 0; }
-
-/* Listas — garante bullets mesmo com reset do Tailwind */
-.abnt ul {
-  list-style-type: disc;
-  list-style-position: outside;
-  padding-left: 18pt;
-  margin: 0 0 6pt;
-}
-.abnt li { margin: 0 0 3pt; break-inside: avoid; }
-.abnt li, .abnt li p { text-indent: 0; } /* itens de lista nunca têm recuo */
-
-/* Títulos e divisores */
-.abnt h1, .abnt h2, .abnt h3 {
-  font-weight: 700;
-  text-indent: 0;
-  margin: 0 0 8pt;
-}
-.abnt h1 { font-size: 14pt; }
-.abnt h2 { font-size: 13pt; }
-.abnt h3 { font-size: 12pt; }
-
-.abnt .sec {
-  text-transform: uppercase;
-  letter-spacing: 0;
-  padding-bottom: 4pt;
-  border-bottom: 0.5pt solid #cbd5e1;
-  margin: 12pt 0 6pt;
-}
-.abnt hr {
-  border: 0;
-  border-top: 0.5pt solid #cbd5e1;
-  margin: 10pt 0;
-}
-
-/* Protege a folha A4 do dark mode */
-.dark .page { background: #ffffff; color: #0f172a; }
-
-/* ===== Cabeçalho (foto + dados) — estável no preview e no PDF ===== */
-.header-grid {
-  display: grid;
-  grid-template-columns: 32mm 1fr;  /* foto fixa à esquerda */
-  gap: 8mm;
-  align-items: center;
-}
-.abnt img.photo {
-  width: 32mm;
-  height: 32mm;
-  object-fit: cover;
-  border: 0.5pt solid #cbd5e1;
-  border-radius: 2mm;
-  display: block;                  /* evita “descer” na linha */
-  background: #fff;                /* proteção p/ transparência */
-}
-.contact-lines p {                 /* 1 info por linha, sem recuo */
-  margin: 0;
-  text-indent: 0 !important;
-}
-
-/* Entradas e quebras seguras */
-.entry { margin: 6pt 0 8pt; }
-.no-split { break-inside: avoid-page; page-break-inside: avoid; }
-.keep-with-next { break-after: avoid-page; page-break-after: avoid; }
-.page-break { break-before: page; page-break-before: always; }
-
-/* ============================================================
-   COMPONENTES DE UI (formulários, cards, botões)
-   ============================================================ */
+/* ====================== COMPONENTES UI ======================== */
 .section       { @apply space-y-4; }
 .card          { @apply bg-white rounded-2xl border border-slate-200 shadow-sm; }
 .card-body     { @apply p-5 md:p-6; }
@@ -260,110 +94,22 @@
 .avatar-hint   { @apply mt-2 text-[11px] text-slate-500; }
 .avatar-panel .btn { @apply px-2.5 py-1 text-[11px] leading-5 rounded-lg whitespace-nowrap; }
 
-/* ============================================================
-   LAYOUT: FORM (esq) + PREVIEW (dir)
-   ============================================================ */
+/* ====================== LAYOUT UI (form + preview) ============ */
 .page-container { max-width: 1600px; margin: 0 auto; }
 
-.layout-2col {
-  display: grid;
-  grid-template-columns: 1fr;     /* mobile/tablet: 1 coluna */
-  gap: 1.25rem;
-  align-items: start;
-}
-@media (min-width: 1024px) {
-  .layout-2col { grid-template-columns: 1fr 1fr; } /* desktop: 50/50 */
-}
+.layout-2col { display:grid; grid-template-columns:1fr; gap:1.25rem; align-items:start; }
+@media (min-width:1024px){ .layout-2col{ grid-template-columns:1fr 1fr; } }
 
-<<<<<<< HEAD
-.btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium; }
-.btn-primary { @apply bg-brand-500 text-white hover:bg-brand-700; }
-.btn-outline { @apply border border-slate-300 hover:bg-slate-50; }
-
-
-@media print {
-  button.no-print,
-  .no-print,
-  .no-print * {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  
-
-  /* Esconde qualquer coisa que não faça parte do currículo */
-  .no-print,
-  header,
-  nav,
-  .stepper,
-  .sidebar,
-  .topbar,
-  .footer,
-  .grid > :first-child {
-    display: none !important;
-  }
-
-  /* Área do currículo ocupa largura total da página */
-  .print-full {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    background: white !important;
-  }
-
-  /* Remove instruções visuais como textos cinza de ajuda */
-  .text-slate-500 {
-    display: none !important;
-  }
-
-  /* Remove sombreamentos que não funcionam bem no papel */
-  .card {
-    box-shadow: none !important;
-    border: none !important;
-  }
-
-  /* Remove numeração de página padrão do Chrome */
-  @page {
-    margin-bottom: 0;
-  }
-}
-
-* Expande o currículo para ocupar a página toda */
-  .print-full {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    background: white !important;
-  }
-=======
-/* Preview “fixo” ao rolar no desktop */
 .preview-shell { position: sticky; top: 1rem; }
-
-/* Cartão do preview */
-.preview-card  {
-  background:#fff; border:1px solid rgb(226 232 240);
-  border-radius:1rem; box-shadow:0 2px 20px rgba(2,6,23,.06);
-  width:100%; max-width:none;
-}
-.preview-toolbar {
-  display:flex; align-items:center; justify-content:flex-end;
-  gap:.5rem; padding:.75rem 1rem; border-bottom:1px solid rgb(241 245 249);
-}
+.preview-card  { background:#fff; border:1px solid rgb(226 232 240); border-radius:1rem; box-shadow:0 2px 20px rgba(2,6,23,.06); width:100%; }
+.preview-toolbar{ display:flex; align-items:center; justify-content:flex-end; gap:.5rem; padding:.75rem 1rem; border-bottom:1px solid rgb(241 245 249); }
 .preview-body  { padding: 1rem 1.25rem; overflow-x:auto; }
 .preview-zoom  { width: 140px; }
 
-/* Canvas A4 (~96dpi). O zoom é aplicado via transform inline */
-.preview-canvas {
-  width:794px;         /* ≈ 210mm @ ~96dpi */
-  min-height:1123px;   /* ≈ 297mm @ ~96dpi */
-  transform-origin: top left;
-}
+/* Canvas A4 no preview (zoom por transform) */
+.preview-canvas { width:794px; min-height:1123px; transform-origin: top left; }
 
-/* ============================================================
-   DARK MODE — só na UI; a folha A4 não muda
-   ============================================================ */
+/* ====================== DARK MODE (UI) ======================== */
 .dark .card        { @apply bg-slate-900 border-slate-700; }
 .dark .label       { @apply text-slate-200; }
 .dark .help        { @apply text-slate-400; }
@@ -374,62 +120,33 @@
 .dark .btn-outline { @apply border-slate-600 text-slate-200 hover:bg-slate-800; }
 .dark .avatar-panel{ @apply border-slate-700 bg-slate-800/50; }
 
-/* ============================================================
-   PRINT (saída A4 limpa; margens ABNT via padding da .page)
-   ============================================================ */
-@media print {
-  @page { size: A4; margin: 0; }
-
-  html, body {
-    background: #fff !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    font-size: 12pt; line-height: 1.5;
-  }
-
-  /* Esconde controles da UI */
-  .preview-toolbar, .btn, .no-print { display: none !important; }
-
-  /* Remove sombras/bordas no PDF */
-  .preview-card, .page { box-shadow: none !important; border: none !important; }
-
-  /* Evita cortes feios em elementos grandes */
-  h1, h2, h3, h4, h5, h6, .section, .entry, .no-split, .page {
-    break-inside: avoid-page; page-break-inside: avoid;
-  }
+/* remove "mailto:/tel:/URL" que alguns navegadores imprimem e que o html2canvas captura */
+.page a[href]::after,
+.page a[href]::before {
+  content: none !important;
 }
 
-/* ============================================================
-   TEMPLATES (base — apenas estilo visual)
-   ============================================================ */
-.template-classic {
-  font-size: 12pt; line-height: 1.5;
-  font-family: "Times New Roman", Times, Georgia, serif;
-}
-.template-classic .sec {
-  text-transform: uppercase;
-  letter-spacing: .02em;
-  font-weight: 700;
-  border-bottom: 1px solid #cbd5e1;
-  padding-bottom: .2rem;
-}
-.template-classic .sub { font-weight: 600; color: #334155; margin-top: .25rem; }
+/* ===== Quebras de página (screen e print) ===== */
 
-.template-modern  {
-  font-size: 12pt; line-height: 1.5;
-  font-family: "Inter", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+/* Mantém o PRÓXIMO bloco junto, mas permite quebrar dentro da section */
+.keep-with-next {
+  break-after: avoid;
+  page-break-after: avoid;
 }
 
-/* ============================================================
-   Overrides SOMENTE durante a exportação (aplicados por export.ts)
-   — cores seguras e sem sombras/efeitos no clone do html2canvas.
-   ============================================================ */
-.page.for-pdf, .page.for-pdf * {
-  color: #0f172a !important;
-  background: transparent !important;
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  box-shadow: none !important;
+/* Use só em blocos que não podem partir ao meio (cada .entry, por ex.) */
+.no-split {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -webkit-region-break-inside: avoid;
 }
-.page.for-pdf .ai-shimmer { animation: none !important; }
->>>>>>> 78c7747 (Melhorias Visuais import e PDF)
+
+/* Não deixe o título sozinho no fim da página */
+.page.abnt h3.sec + * {
+  break-before: avoid;
+  page-break-before: avoid;
+}
+
+/* (opcional) título com margens um pouco menores ajuda a caber mais conteúdo */
+.page.abnt h3.sec { margin: 10pt 0 4pt; }

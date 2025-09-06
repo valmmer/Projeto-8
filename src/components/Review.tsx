@@ -1,28 +1,15 @@
 // src/components/Review.tsx
-// ----------------------------------------------------------------------------
-// Painel de "Revisão Final"
-// - Troca de template (Clássico ABNT | Modern Clean)
-// - Imprimir (usa @media print do CSS)
-// - PDF paginado (export.ts fatia o canvas por página, sem tarjas)
-// ----------------------------------------------------------------------------
-
-<<<<<<< HEAD
-export default function Review() {
-
-  // 👉 Aqui declaramos a função handleVoltar
-  const handleVoltar = () => {
-    window.history.back(); // ou outro comportamento que você quiser
-
-=======
 import React, { useRef, useState } from 'react';
 import ResumePreview, { type ResumeTemplateId } from './preview/ResumePreview';
-import { exportElementToPDF } from '../lib/pdf/export';
+import { elementToPDF, elementToPNG } from '../lib/pdf/export';
 import { useResume } from '../state/ResumeContext';
+import { downloadServerPDF } from '../lib/serverPrint';
 
 type Props = {
   template: ResumeTemplateId;
   onTemplateChange: (t: ResumeTemplateId) => void;
 };
+type Busy = null | 'pdf' | 'png' | 'server';
 
 function slug(s: string) {
   return s
@@ -33,102 +20,106 @@ function slug(s: string) {
     .replace(/^_+|_+$/g, '');
 }
 
+function getPageEl(wrap: HTMLElement | null): HTMLElement | null {
+  if (!wrap) return null;
+  return (
+    wrap.querySelector<HTMLElement>('#cv-page') ??
+    wrap.querySelector<HTMLElement>('.page') ??
+    null
+  );
+}
+
+// Adiciona .exporting e remove temporariamente o transform do preview
+async function runWithExporting(page: HTMLElement, task: () => Promise<void>) {
+  // wrapper do preview que costuma ter transform: scale(...)
+  const previewCanvas = page.closest<HTMLElement>('.preview-canvas');
+  const prevTransform = previewCanvas?.style.transform;
+
+  try {
+    page.classList.add('exporting'); // ativa regras do print.css p/ export
+    if (previewCanvas) previewCanvas.style.transform = 'none'; // evita distorção
+    await task();
+  } finally {
+    if (previewCanvas) previewCanvas.style.transform = prevTransform || '';
+    page.classList.remove('exporting');
+  }
+}
+
 export default function Review({ template, onTemplateChange }: Props) {
->>>>>>> 78c7747 (Melhorias Visuais import e PDF)
-  const cvRef = useRef<HTMLDivElement>(null);
-  const [saving, setSaving] = useState(false);
+  const cvWrapRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState<Busy>(null);
   const { state } = useResume();
 
-  async function gerarPDF() {
-    const wrap = cvRef.current;
-    if (!wrap) {
-      alert('Não foi possível localizar o preview.');
-      return;
-    }
+  async function handleExportPDF() {
+    if (busy) return;
+    const page = getPageEl(cvWrapRef.current);
+    if (!page) return alert('Não foi possível localizar o preview (#cv-page).');
 
-    // 🎯 Exporta exatamente a página A4/ABNT
-    const page =
-      wrap.querySelector<HTMLElement>('#cv-page') ??
-      wrap.querySelector<HTMLElement>('.page') ??
-      wrap;
-
-    // debug opcional
-    console.debug(
-      '[pdf] target size:',
-      page.clientWidth,
-      'x',
-      page.clientHeight,
-    );
-
+    setBusy('pdf');
+    const nome = slug(state?.dados?.nome || 'Curriculo');
     try {
-      setSaving(true);
-      const nome = slug(state?.dados?.nome || 'Curriculo');
-      await exportElementToPDF(page, `${nome}.pdf`);
+      await runWithExporting(page, async () => {
+        await elementToPDF(page, { fileName: nome });
+      });
     } catch (e) {
       console.error('[pdf] erro:', e);
       alert('Não foi possível gerar o PDF agora.');
     } finally {
-      setSaving(false);
+      setBusy(null);
     }
-<<<<<<< HEAD
+  }
 
-  };
+  async function handleExportPNG() {
+    if (busy) return;
+    const page = getPageEl(cvWrapRef.current);
+    if (!page) return;
 
-  return (
-    <div className="space-y-4">
+    setBusy('png');
+    const nome = slug(state?.dados?.nome || 'Curriculo');
+    try {
+      await runWithExporting(page, async () => {
+        await elementToPNG(page, nome);
+      });
+    } catch (e) {
+      console.error('[png] erro:', e);
+      alert('Não foi possível gerar a imagem agora.');
+    } finally {
+      setBusy(null);
+    }
+  }
 
-      <div className="flex justify-between items-center no-print">
-        <h2 className="text-xl font-semibold">Revisão Final</h2>
-        <button onClick={() => window.print()} className="btn btn-outline">
-          Imprimir / PDF
-        </button>
-      </div>
+  async function handleServerPDF() {
+    if (busy) return;
+    const page = getPageEl(cvWrapRef.current);
+    if (!page) return alert('Não foi possível localizar o preview (#cv-page).');
 
-      <div className="card print-full">
-        <div className="card-body">
-          <Preview />
-        </div>
-      </div>
-
-      {/* Voltar - com no-print para esconder na impressão */}
-      <div className="no-print">
-        <button className="btn btn-outline" onClick={handleVoltar}>
-          Voltar
-        </button>
-
-      {/* Cabeçalho e botões */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Revisão Final</h2>
-        <div className="space-x-2">
-          <button
-            onClick={() => window.print()}
-            className="btn btn-outline"
-          >
-            Imprimir
-          </button>
-          <button
-            onClick={gerarPDF}
-            className="btn btn-primary"
-          >
-            Gerar PDF
-          </button>
-        </div>
-      </div>
-
-      {/* Container capturado pelo PDF */}
-      <div
-        ref={cvRef}
-        className="bg-white p-6 rounded shadow-lg w-full min-h-[600px] print-container"
-        style={{ overflow: "visible" }} // evita cortar conteúdo
-      >
-        <Preview />
-
-=======
+    setBusy('server');
+    const nome = slug(state?.dados?.nome || 'Curriculo');
+    try {
+      await runWithExporting(page, async () => {
+        try {
+          await (
+            downloadServerPDF as unknown as (
+              url?: string,
+              opts?: any,
+            ) => Promise<void>
+          )(window.location.href, { fileName: nome, selector: '#cv-page' });
+        } catch {
+          await (
+            downloadServerPDF as unknown as (url?: string) => Promise<void>
+          )(window.location.href);
+        }
+      });
+    } catch (e) {
+      console.error('[server-pdf] erro:', e);
+      alert('Falha ao gerar PDF no servidor.');
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
-    <section className="card" aria-busy={saving}>
-      {/* Toolbar superior */}
+    <section className="card" aria-busy={!!busy}>
       <div className="preview-toolbar">
         <label className="text-sm text-slate-600 mr-2">Modelo</label>
         <select
@@ -138,40 +129,58 @@ export default function Review({ template, onTemplateChange }: Props) {
             onTemplateChange(e.currentTarget.value as ResumeTemplateId)
           }
           title="Modelo de currículo"
-          disabled={saving}
+          disabled={!!busy}
         >
           <option value="classico">Clássico ABNT</option>
-          <option value="clean">Moderno Clean</option>
+          <option value="modern">Moderno Clean</option>
         </select>
 
         <button
           className="btn btn-outline"
           onClick={() => window.print()}
-          disabled={saving}
+          disabled={!!busy}
+          title="Imprimir / Salvar como PDF (nativo)"
         >
           Imprimir
         </button>
+
         <button
           className="btn btn-primary"
-          onClick={gerarPDF}
-          disabled={saving}
+          onClick={handleExportPDF}
+          disabled={!!busy}
+          title="Gerar PDF via html2canvas + jsPDF"
         >
-          {saving ? 'Gerando…' : 'Gerar PDF'}
+          {busy === 'pdf' ? 'Gerando…' : 'Gerar PDF'}
+        </button>
+
+        <button
+          className="btn btn-secondary"
+          onClick={handleServerPDF}
+          disabled={!!busy}
+          title="Gerar via servidor (Puppeteer)"
+        >
+          {busy === 'server' ? 'Gerando…' : 'Gerar PDF (Servidor)'}
+        </button>
+
+        <button
+          className="btn"
+          onClick={handleExportPNG}
+          disabled={!!busy}
+          title="Exportar visual como PNG"
+        >
+          {busy === 'png' ? 'Gerando…' : 'Exportar PNG'}
         </button>
       </div>
 
-      {/* Corpo com o canvas A4 */}
       <div className="preview-body">
         <div
-          ref={cvRef}
+          ref={cvWrapRef}
           className="preview-canvas"
           style={{ transform: 'scale(1)' }}
         >
-          {/* ⚠️ Nos templates, o root deve ser:
-              <div id="cv-page" className="page abnt"> ... </div> */}
+          {/* O template renderiza <div id="cv-page" class="page abnt|modern"><div id="cv-content" class="content">… */}
           <ResumePreview template={template} />
         </div>
->>>>>>> 78c7747 (Melhorias Visuais import e PDF)
       </div>
     </section>
   );

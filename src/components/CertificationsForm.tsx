@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useResume, rid } from '../state/ResumeContext';
 import type { Certification } from '../types';
 
-export default function CertificationsForm() {
+export default function () {
   const { state, dispatch } = useResume();
   const [c, setC] = useState<Certification>({
     id: '',

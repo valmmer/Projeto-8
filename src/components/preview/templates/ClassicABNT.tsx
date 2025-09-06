@@ -1,18 +1,26 @@
-// Clássico ABNT — uma coluna, tipografia neutra, seções claras.
-// Requer: root <article className="page abnt"> no ResumePreview.
-// Usa .entry.no-split para cada item, e .keep-with-next nos títulos.
+// src/components/preview/templates/ClassicABNT.tsx
+// -----------------------------------------------------------------------------
+// CLÁSSICO ABNT — 1 coluna, Times 12pt, entrelinha 1.5, recuo 1.25cm
+// - Margens e tipografia vêm do CSS (.page.abnt + @page abnt).
+// - Este componente organiza o conteúdo e aplica classes utilitárias.
+// - O wrapper #cv-page / #cv-content é importante para impressão/export.
+// -----------------------------------------------------------------------------
 
 import { useResume } from '../../../state';
 import type { Skill } from '../../../types';
 
-type SkillLevel = 'Básico' | 'Intermediário' | 'Avançado';
-const LEVEL_ORDER: Record<SkillLevel, number> = {
-  Avançado: 0,
-  Intermediário: 1,
-  Básico: 2,
-};
+// Helpers (src/lib/format.ts)
+import {
+  formatPeriod,
+  splitBullets,
+  sortByMostRecentPeriod,
+  rankLangLevel,
+  displayLangLevel,
+  sortByYearDesc,
+  sortSkills,
+} from '../../../lib/format';
 
-// helper p/ chaves estáveis
+// chave estável para listas (evita key duplicada quando não há id)
 function keyOf(val: any, fallback: string, i: number) {
   return val?.id ?? `${fallback}-${i}`;
 }
@@ -20,255 +28,404 @@ function keyOf(val: any, fallback: string, i: number) {
 export default function ClassicABNT() {
   const { state } = useResume();
   const { dados, skills, experiencias, formacoes, certificacoes, idiomas } =
-    state;
+    (state as any) ?? {};
 
-  const objetivo = (dados as any)?.objetivo?.trim();
+  // Campo opcional (só mostra se vier preenchido)
+  const objetivo = dados?.objetivo?.trim();
 
+  // (Compat) Linhas de contato — não usamos no cabeçalho, mas mantido caso precise
   const contactLines = [
-    dados.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
-    dados.telefone?.trim() ? `Telefone: ${dados.telefone.trim()}` : null,
-    dados.linkedin?.trim() ? `LinkedIn: ${dados.linkedin.trim()}` : null,
-    (dados as any)?.github?.trim()
-      ? `GitHub: ${(dados as any).github.trim()}`
-      : null,
-    dados.site?.trim() ? `Site/Portfólio: ${dados.site.trim()}` : null,
-    dados.cidadePais?.trim() ? `Cidade/País: ${dados.cidadePais.trim()}` : null,
-    (dados as any)?.dataNascimento?.trim()
-      ? `Nascimento: ${(dados as any).dataNascimento.trim()}`
+    dados?.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
+    dados?.telefone?.trim() ? `Telefone: ${dados.telefone.trim()}` : null,
+    dados?.linkedin?.trim() ? `LinkedIn: ${dados.linkedin.trim()}` : null,
+    dados?.github?.trim() ? `GitHub: ${dados.github.trim()}` : null,
+    dados?.site?.trim() ? `Site/Portfólio: ${dados.site.trim()}` : null,
+    dados?.cidadePais?.trim()
+      ? `Cidade/País: ${dados.cidadePais.trim()}`
       : null,
   ].filter(Boolean) as string[];
 
-  // Ordena e separa Hard/Soft (fallback: sem tipo => Hard)
-  const sorted = [...skills].sort((a: any, b: any) => {
-    const byType = (a.tipo === 'Soft' ? 1 : 0) - (b.tipo === 'Soft' ? 1 : 0);
-    if (byType !== 0) return byType;
-    const byLvl = (LEVEL_ORDER as any)[a.nivel] - (LEVEL_ORDER as any)[b.nivel];
-    if (byLvl !== 0) return byLvl;
-    return a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' });
-  });
-  const hard = sorted.filter((s: any) => s.tipo !== 'Soft');
-  const soft = sorted.filter((s: any) => s.tipo === 'Soft');
-
-  const SkillList = ({ items }: { items: Skill[] }) =>
-    items.length ? (
-      <ul className="list-disc pl-6 mt-1">
-        {items.map((s, i) => (
-          <li key={keyOf(s, `skill-${s.nome}`, i)}>
-            <p className="no-indent">
-              {s.nome}
-              {s.nivel ? (
-                <>
-                  {' '}
-                  — <i>{s.nivel}</i>
-                </>
-              ) : null}
-            </p>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p className="text-sm text-slate-500 mt-1 no-indent">—</p>
-    );
-
   return (
-    <article className="page abnt text-black leading-relaxed">
-      {/* Cabeçalho */}
-      <header className="mb-5 keep-with-next">
-        <div className="header-grid">
-          {dados.foto?.trim() ? (
-            <img
-              src={dados.foto}
-              alt={dados.nome || 'Foto'}
-              className="photo"
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
-              loading="eager"
-            />
-          ) : (
-            <div
-              className="photo grid place-items-center text-slate-500 text-xs"
-              style={{
-                width: '32mm',
-                height: '32mm',
-                border: '0.5pt solid #cbd5e1',
-                borderRadius: '2mm',
-              }}
-            >
-              Sem foto
-            </div>
-          )}
+    // lang="pt-BR" ajuda a hifenização (hyphens:auto no CSS)
+    <div id="cv-page" className="page abnt" data-template="abnt" lang="pt-BR">
+      {/* >>> Área útil da página (margens via @page no CSS) <<< */}
+      <div id="cv-content" className="content">
+        {/* ======================================================================
+            1) CABEÇALHO — Foto à esquerda + Nome/Contatos à direita
+           ====================================================================== */}
+        <header className="keep-with-next">
+          <div className="abnt-row-hero">
+            {/* FOTO — se não houver, mostra placeholder discreto */}
+            {dados?.foto?.trim() ? (
+              <img
+                src={dados.foto}
+                alt={dados.nome || 'Foto'}
+                className="abnt-photo-left"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                loading="eager"
+              />
+            ) : (
+              <div className="abnt-photo-left placeholder">Sem foto</div>
+            )}
 
-          <div>
-            <h1 className="font-extrabold uppercase tracking-wide">
-              Curriculum Vitae
-            </h1>
-            <h2 className="font-semibold mt-1 text-lg">
-              {dados.nome || 'Seu Nome'}
-            </h2>
+            {/* BLOCO DE TEXTO À DIREITA */}
+            <div className="abnt-hero-text">
+              {/* NOME */}
+              <h1 className="abnt-headline">
+                {dados?.nome || 'SEU NOME COMPLETO'}
+              </h1>
 
-            {/* 1 info por linha; sem recuo; quebra URLs longas */}
-            <div className="contact-lines mt-1 break-words">
-              {[
-                dados.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
-                dados.telefone?.trim()
-                  ? `Telefone: ${dados.telefone.trim()}`
-                  : null,
-                dados.linkedin?.trim()
-                  ? `LinkedIn: ${dados.linkedin.trim()}`
-                  : null,
-                (dados as any)?.github?.trim()
-                  ? `GitHub: ${(dados as any).github.trim()}`
-                  : null,
-                dados.site?.trim()
-                  ? `Site/Portfólio: ${dados.site.trim()}`
-                  : null,
-                dados.cidadePais?.trim()
-                  ? `Cidade/País: ${dados.cidadePais.trim()}`
-                  : null,
-                (dados as any)?.dataNascimento?.trim()
-                  ? `Nascimento: ${(dados as any).dataNascimento.trim()}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .map((line, i) => (
-                  <p key={`contact-${i}`} className="no-indent">
-                    {line}
+              {/* TÍTULO PROFISSIONAL (opcional) */}
+              {dados?.titulo?.trim() && (
+                <h2 className="abnt-subheadline">{dados.titulo.trim()}</h2>
+              )}
+
+              {/* CONTATOS BÁSICOS */}
+              <div className="abnt-meta">
+                {dados?.email?.trim() && (
+                  <p className="no-indent">
+                    E-mail:{' '}
+                    <a
+                      href={`mailto:${dados.email.trim()}`}
+                      className="link-plain break-anywhere"
+                    >
+                      {dados.email.trim()}
+                    </a>
                   </p>
+                )}
+                {dados?.telefone?.trim() && (
+                  <p className="no-indent">
+                    Telefone:{' '}
+                    <a
+                      href={`tel:${dados.telefone.replace(/[^\d+]/g, '')}`}
+                      className="link-plain"
+                    >
+                      {dados.telefone}
+                    </a>
+                  </p>
+                )}
+                {dados?.cidadePais?.trim() && (
+                  <p className="no-indent">
+                    Cidade/País: {dados.cidadePais.trim()}
+                  </p>
+                )}
+              </div>
+
+              {/* LINKS (abaixo) */}
+              {(dados?.linkedin?.trim() ||
+                dados?.github?.trim() ||
+                dados?.site?.trim()) && (
+                <div className="abnt-meta abnt-meta-links">
+                  {dados?.linkedin?.trim() && (
+                    <p className="no-indent">
+                      LinkedIn:{' '}
+                      <a
+                        href={dados.linkedin.trim()}
+                        className="link-plain break-anywhere"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dados.linkedin.trim()}
+                      </a>
+                    </p>
+                  )}
+                  {dados?.github?.trim() && (
+                    <p className="no-indent">
+                      GitHub:{' '}
+                      <a
+                        href={dados.github.trim()}
+                        className="link-plain break-anywhere"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dados.github.trim()}
+                      </a>
+                    </p>
+                  )}
+                  {dados?.site?.trim() && (
+                    <p className="no-indent">
+                      Portfólio / Site:{' '}
+                      <a
+                        href={dados.site.trim()}
+                        className="link-plain break-anywhere"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dados.site.trim()}
+                      </a>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* ======================================================================
+            2) RESUMO PROFISSIONAL — texto corrido
+           ====================================================================== */}
+        <section>
+          <h3 className="sec keep-with-next">RESUMO PROFISSIONAL</h3>
+          <p className="no-indent">
+            {dados?.resumo || (
+              <span className="placeholder">
+                Adicione um resumo profissional…
+              </span>
+            )}
+          </p>
+        </section>
+
+        {/* ======================================================================
+            3) OBJETIVO PROFISSIONAL — aparece somente se existir
+           ====================================================================== */}
+        {objetivo && (
+          <section>
+            <h3 className="sec keep-with-next">OBJETIVO PROFISSIONAL</h3>
+            <p className="no-indent">{objetivo}</p>
+          </section>
+        )}
+
+        {/* ======================================================================
+            4) EXPERIÊNCIA PROFISSIONAL
+           ====================================================================== */}
+        <section>
+          <h3 className="sec keep-with-next">EXPERIÊNCIA PROFISSIONAL</h3>
+
+          {Array.isArray(experiencias) && experiencias.length ? (
+            <div>
+              {sortByMostRecentPeriod(experiencias, (e: any) => ({
+                inicio: e?.inicio,
+                fim: e?.fim,
+                atual: e?.atual,
+              })).map((e: any, i: number) => {
+                const periodo = formatPeriod({
+                  periodo: e?.periodo,
+                  inicio: e?.inicio,
+                  fim: e?.fim,
+                  atual: e?.atual,
+                });
+                const bullets = splitBullets(e?.descricao);
+
+                return (
+                  <div
+                    className="entry no-split"
+                    key={keyOf(e, `exp-${e?.empresa}-${e?.cargo}`, i)}
+                  >
+                    {/* Linha de identificação da experiência */}
+                    <p className="no-indent">
+                      <b>{e?.cargo}</b> — {e?.empresa}
+                    </p>
+
+                    {/* Período (opcional) */}
+                    {periodo && (
+                      <p className="no-indent">
+                        <i>{periodo}</i>
+                      </p>
+                    )}
+
+                    {/* Descrição: usa UL quando há 2+ itens; senão, parágrafo único */}
+                    {bullets.length >= 2 ? (
+                      <ul>
+                        {bullets.map((t: string, j: number) => (
+                          <li key={`exp-${i}-b-${j}`}>
+                            <p className="no-indent">{t}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      e?.descricao && <p>{e.descricao}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="no-indent placeholder">Adicione suas experiências…</p>
+          )}
+        </section>
+
+        {/* ======================================================================
+            5) FORMAÇÃO ACADÊMICA
+           ====================================================================== */}
+        <section>
+          <h3 className="sec keep-with-next">FORMAÇÃO ACADÊMICA</h3>
+
+          {Array.isArray(formacoes) && formacoes.length ? (
+            <div>
+              {sortByMostRecentPeriod(formacoes, (f: any) => ({
+                inicio: f?.inicio,
+                fim: f?.fim,
+                atual: f?.atual,
+              })).map((f: any, i: number) => {
+                const periodo = formatPeriod({
+                  periodo: f?.periodo,
+                  inicio: f?.inicio,
+                  fim: f?.fim,
+                  atual: f?.atual,
+                });
+
+                return (
+                  <div
+                    className="entry no-split"
+                    key={keyOf(f, `edu-${f?.curso}-${f?.instituicao}`, i)}
+                  >
+                    <p className="no-indent">
+                      <b>{f?.curso}</b> — {f?.instituicao}
+                    </p>
+                    {periodo && (
+                      <p className="no-indent">
+                        <i>{periodo}</i>
+                      </p>
+                    )}
+                    {f?.obs && <p>{f.obs}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="no-indent placeholder">Adicione suas formações…</p>
+          )}
+        </section>
+
+        {/* ======================================================================
+            6) CERTIFICAÇÕES
+           ====================================================================== */}
+        <section>
+          <h3 className="sec keep-with-next">CERTIFICAÇÕES</h3>
+
+          {Array.isArray(certificacoes) && certificacoes.length ? (
+            <ul>
+              {sortByYearDesc(certificacoes, (c: any) => ({
+                ano: c?.ano,
+                orgao: c?.orgao,
+                titulo: c?.titulo,
+              })).map((c: any, i: number) => (
+                <li key={keyOf(c, `cert-${c?.titulo}`, i)}>
+                  <p className="no-indent">
+                    {c?.titulo}
+                    {c?.orgao ? ` — ${c.orgao}` : ''}
+                    {c?.ano ? ` · ${c.ano}` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="no-indent placeholder">
+              Adicione suas certificações…
+            </p>
+          )}
+        </section>
+
+        {/* ======================================================================
+            7) HABILIDADES (Hard / Soft)
+           ====================================================================== */}
+        <section className="mb-4">
+          <h3 className="sec keep-with-next">HABILIDADES</h3>
+
+          {(() => {
+            const { hard: hardS, soft: softS } = sortSkills(
+              (skills as Skill[] | any[]) ?? [],
+            );
+            const hasHard = hardS.length > 0;
+            const hasSoft = softS.length > 0;
+
+            if (!hasHard && !hasSoft)
+              return (
+                <p className="no-indent placeholder">
+                  Adicione suas habilidades…
+                </p>
+              );
+
+            return (
+              <div>
+                {hasHard && (
+                  <div className="no-split keep-with-next">
+                    <h4 className="sub group-title keep-with-next">
+                      Hard Skills
+                    </h4>
+                    <ul>
+                      {hardS.map((s: any, i: number) => (
+                        <li key={keyOf(s, `hard-${s?.nome}`, i)}>
+                          <p className="no-indent">
+                            {s?.nome}
+                            {s?.nivel ? (
+                              <>
+                                {' '}
+                                — <i>{s.nivel}</i>
+                              </>
+                            ) : null}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {hasSoft && (
+                  <div
+                    className="no-split keep-with-next"
+                    style={{ marginTop: '8pt' }}
+                  >
+                    <h4 className="sub group-title keep-with-next">
+                      Soft Skills
+                    </h4>
+                    <ul>
+                      {softS.map((s: any, i: number) => (
+                        <li key={keyOf(s, `soft-${s?.nome}`, i)}>
+                          <p className="no-indent">{s?.nome}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </section>
+
+        {/* ======================================================================
+            8) IDIOMAS
+           ====================================================================== */}
+        <section>
+          <h3 className="sec keep-with-next">IDIOMAS</h3>
+
+          {Array.isArray(idiomas) && idiomas.length ? (
+            <div>
+              {[...idiomas]
+                .sort((a: any, b: any) => {
+                  const r = rankLangLevel(b?.nivel) - rankLangLevel(a?.nivel);
+                  if (r !== 0) return r;
+                  return (a?.idioma || '').localeCompare(
+                    b?.idioma || '',
+                    'pt',
+                    {
+                      sensitivity: 'base',
+                    },
+                  );
+                })
+                .map((l: any, i: number) => (
+                  <div
+                    className="entry no-split"
+                    key={keyOf(l, `lang-${l?.idioma}`, i)}
+                  >
+                    <p className="no-indent">
+                      {l?.idioma}
+                      {l?.nivel ? (
+                        <>
+                          {' '}
+                          — <i>{displayLangLevel(l.nivel)}</i>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
                 ))}
             </div>
-          </div>
-        </div>
-        <hr className="mt-3" />
-      </header>
-
-      {objetivo && (
-        <section className="mb-4 keep-with-next">
-          <h3 className="sec">OBJETIVO PROFISSIONAL</h3>
-          <p className="mt-1">{objetivo}</p>
+          ) : (
+            <p className="no-indent placeholder">Adicione seus idiomas…</p>
+          )}
         </section>
-      )}
-
-      <section className="mb-4 keep-with-next">
-        <h3 className="sec">RESUMO PROFISSIONAL</h3>
-        <p className="mt-1">
-          {dados.resumo || 'Adicione um resumo profissional...'}
-        </p>
-      </section>
-
-      <section className="mb-4 keep-with-next">
-        <h3 className="sec">FORMAÇÃO ACADÊMICA</h3>
-        {formacoes.length ? (
-          <div className="mt-1">
-            {formacoes.map((f, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(f, `edu-${f.curso}-${f.instituicao}`, i)}
-              >
-                <p className="no-indent">
-                  <b>{f.curso}</b> — {f.instituicao}
-                  {f.periodo ? ` · ${f.periodo}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-1 no-indent">Adicione suas formações…</p>
-        )}
-      </section>
-
-      <section className="mb-4 keep-with-next">
-        <h3 className="sec">HABILIDADES</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <h4 className="sub">Hard Skills</h4>
-            <SkillList items={hard as any} />
-          </div>
-          <div>
-            <h4 className="sub">Soft Skills</h4>
-            <ul className="list-disc pl-6 mt-1">
-              {(soft as any[]).length ? (
-                soft.map((s, i) => (
-                  <li key={keyOf(s, `soft-${s.nome}`, i)}>
-                    <p className="no-indent">{s.nome}</p>
-                  </li>
-                ))
-              ) : (
-                <li className="text-slate-500">
-                  <p className="no-indent">—</p>
-                </li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="mb-4 keep-with-next">
-        <h3 className="sec">EXPERIÊNCIA PROFISSIONAL</h3>
-        {experiencias.length ? (
-          <div className="mt-1">
-            {experiencias.map((e, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(e, `exp-${e.empresa}-${e.cargo}`, i)}
-              >
-                <p className="no-indent font-bold">
-                  {e.cargo} — {e.empresa}
-                </p>
-                <p className="no-indent italic">
-                  {e.periodo}
-                  {e.atual ? ' (atual)' : ''}
-                </p>
-                {/* descrição pode conter bullets (•); se quiser, já deixe como <ul><li> no form */}
-                <p>{e.descricao}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-1 no-indent">Adicione suas experiências…</p>
-        )}
-      </section>
-
-      <section className="mb-4 keep-with-next">
-        <h3 className="sec">CERTIFICAÇÕES</h3>
-        {certificacoes.length ? (
-          <div className="mt-1">
-            {certificacoes.map((c, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(c, `cert-${c.titulo}`, i)}
-              >
-                <p className="no-indent">
-                  {c.titulo}
-                  {c.orgao ? ` — ${c.orgao}` : ''}
-                  {c.ano ? ` · ${c.ano}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-1 no-indent">Adicione suas certificações…</p>
-        )}
-      </section>
-
-      <section className="keep-with-next">
-        <h3 className="sec">IDIOMAS</h3>
-        {idiomas.length ? (
-          <div className="mt-1">
-            {idiomas.map((l, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(l, `lang-${l.idioma}`, i)}
-              >
-                <p className="no-indent">
-                  {l.idioma} — <i>{l.nivel}</i>
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-1 no-indent">Adicione seus idiomas…</p>
-        )}
-      </section>
-    </article>
+      </div>
+    </div>
   );
 }

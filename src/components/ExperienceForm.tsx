@@ -10,14 +10,13 @@
 import { useMemo, useState } from 'react';
 import { useResume, rid } from '../state/ResumeContext';
 import type { Experience } from '../types';
-
 import ImproveButton from './ImproveButton';
 import AIOverlay from './ui/AIOverlay';
-import PeriodPicker from './education/PeriodPicker';
+import PeriodPicker from './education/PeriodPicker'; // ✅ ajuste o caminho se seu arquivo estiver em outro local
 
 const MAX_DESC = 600;
 
-/** Corta sem quebrar a última palavra + reticências */
+/** Corta sem quebrar a última palavra + reticências (para texto vindo da IA) */
 function softClamp(text: string, maxLen: number) {
   if (text.length <= maxLen) return text;
   const sliced = text.slice(0, maxLen + 1);
@@ -38,7 +37,6 @@ function composeExperiencePrompt(f: Experience) {
   if (f.periodo)
     lines.push(`Período: ${f.periodo}${f.atual ? ' (atual)' : ''}`);
   if (f.descricao?.trim()) lines.push(`Base/rascunho: ${f.descricao.trim()}`);
-
   lines.push(
     'Tarefa: Escreva uma descrição de experiência profissional forte em português brasileiro, ' +
       'com 2–4 frases ou 3–5 bullets; inicie com verbos de ação; quantifique resultados ' +
@@ -66,7 +64,7 @@ export default function ExperienceForm() {
   const [descLoading, setDescLoading] = useState(false);
   const [descFx, setDescFx] = useState(false);
 
-  // Aplica retorno da IA na descrição
+  // Aplica retorno da IA na descrição (respeita MAX_DESC)
   function applyDescricaoFromAI(texto: string) {
     const clamped = softClamp(texto, MAX_DESC);
     setForm((old) => ({ ...old, descricao: clamped }));
@@ -128,19 +126,17 @@ export default function ExperienceForm() {
                 placeholder="Ex.: Analista de Sistemas"
               />
             </div>
-          </div>
 
-          {/* PeriodPicker (mês/ano com 'Atual') */}
-          <div className="field">
-            <label className="label">Período *</label>
-            <PeriodPicker
-              value={form.periodo}
-              onChange={handlePeriodoChange}
-              // pode ajustar o range conforme quiser:
-              minYear={new Date().getFullYear() - 40}
-              maxYear={new Date().getFullYear()}
-              allowOpenEnded={true}
-            />
+            {/* Período (mês/ano com "Atual") */}
+            <div className="field sm:col-span-2">
+              <label className="label">Período *</label>
+              <PeriodPicker
+                value={form.periodo}
+                onChange={handlePeriodoChange} // deduz "atual" no handler
+                allowOpenEnded={true} // permite "MM/AAAA - Atual"
+                // minYear={2000} maxYear={new Date().getFullYear()} // (opcional)
+              />
+            </div>
           </div>
 
           {/* Descrição + IA */}
@@ -172,9 +168,15 @@ export default function ExperienceForm() {
                 placeholder="Principais responsabilidades, resultados, tecnologias…"
                 value={form.descricao}
                 readOnly={descLoading}
-                onChange={(e) =>
-                  setForm({ ...form, descricao: e.target.value })
-                }
+                onChange={(e) => {
+                  const next = e.target.value;
+                  // limite "hard" no digitar manual
+                  setForm({
+                    ...form,
+                    descricao:
+                      next.length > MAX_DESC ? next.slice(0, MAX_DESC) : next,
+                  });
+                }}
               />
 
               <AIOverlay

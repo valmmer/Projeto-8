@@ -1,0 +1,307 @@
+/* src/styles/print.css
+   — A4 com margens ABNT (30/20/20/30mm)
+   — ABNT (Times 12pt, entrelinha 1.5, recuo 1.25cm)
+   — Modern Clean (sans, 2 colunas)
+*/
+
+/* ====================== PÁGINA A4 & PREVIEW ====================== */
+@page {
+  size: A4;
+  margin: 30mm 20mm 20mm 30mm; /* top right bottom left */
+}
+
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 2px 20px rgba(2, 6, 23, 0.08);
+}
+
+/* Padding só no preview (para “simular” as margens do @page) */
+.page .content { padding: 30mm 20mm 20mm 30mm; }
+
+/* Export/print: zera padding p/ não somar com @page */
+.page.exporting .content {
+  padding: 0 !important;
+  width: 160mm !important;      /* 210 - 30 - 20 */
+  max-width: 160mm !important;
+}
+
+/* ====================== PRINT (consolidado) ====================== */
+@media print {
+  body { background: #fff !important; }
+  .page {
+    margin: 0 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .page .content { padding: 0 !important; }
+
+  /* não anexar URL depois de links */
+  .page a[href]::after,
+  .page a[href]::before { content: none !important; }
+
+  /* esconder placeholders quando imprimir */
+  .page.abnt .placeholder,
+  .page.modern .placeholder { display: none !important; }
+}
+
+/* =========================== CLÁSSICO ABNT =========================== */
+.page.abnt {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  hyphens: auto;
+}
+.page.abnt * { font-variant-numeric: lining-nums; }
+
+/* Títulos */
+.page.abnt h3.sec {
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.4pt;
+  font-size: 12pt;
+  margin: 12pt 0 6pt 0;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.page.abnt h4.sub {
+  font-weight: 700;
+  font-size: 12pt;
+  margin: 8pt 0 4pt 0;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* Parágrafos */
+.page.abnt p {
+  margin: 0 0 6pt 0;
+  text-align: justify;
+  text-indent: 1.25cm;
+}
+.page.abnt p.no-indent { text-indent: 0; }
+
+/* Listas */
+.page.abnt ul {
+  margin: 0 0 6pt 1.25cm;
+  padding: 0;
+  list-style-position: outside;
+  break-inside: auto;                 /* permite quebrar entre <li> */
+  page-break-inside: auto;
+}
+.page.abnt li {
+  margin: 0 0 2pt 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -webkit-region-break-inside: avoid;
+}
+.page.abnt li p { text-indent: 0; margin: 0; }
+
+/* Entradas e quebras */
+.page.abnt .entry {
+  margin: 0 0 8pt 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -webkit-region-break-inside: avoid;
+}
+.page.abnt .keep-with-next {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.page.abnt .no-split {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -webkit-region-break-inside: avoid;
+}
+
+/* Órfãs/viúvas mais suaves (reduz “empurrões” de página) */
+.page.abnt p,
+.page.abnt li { orphans: 2; widows: 2; }
+
+/* Cabeçalho (foto + textos) */
+.page.abnt .abnt-row-hero {
+  display: grid;
+  grid-template-columns: 30mm 1fr;
+  column-gap: 6mm;
+  align-items: start;
+  margin-bottom: 6pt; /* um pouco menor que 8pt pra evitar sobra de página */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.page.abnt .abnt-photo-left {
+  width: 30mm; height: 30mm;
+  object-fit: cover;
+  border: 0.5pt solid #cbd5e1;
+  border-radius: 2mm;
+  background: #fff;
+}
+.page.abnt .abnt-photo-left.placeholder {
+  display: grid; place-items: center;
+  color: #64748b; font-size: 10pt;
+}
+.page.abnt .abnt-hero-text { min-width: 0; }
+.page.abnt .abnt-headline {
+  margin: 0 0 4pt 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+  font-weight: 700;
+  font-size: 16pt;
+  line-height: 1.2;
+}
+.page.abnt .abnt-subheadline {
+  margin: 2pt 0 4pt 0;
+  font-size: 12pt;
+  font-weight: 600;
+}
+
+/* Metadados & links */
+.page.abnt .abnt-meta { display: grid; gap: 2pt; margin-top: 2pt; }
+.page.abnt .abnt-meta p { margin: 0; text-indent: 0; }
+.page.abnt .abnt-meta-links { display: grid; gap: 2pt; margin-top: 4pt; }
+.page.abnt a.link-plain { color: inherit; text-decoration: none; }
+.page.abnt .break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+/* Separador opcional */
+.page.abnt hr {
+  border: none;
+  border-top: 0.5pt solid #e2e8f0;
+  margin: 8pt 0 6pt 0;
+}
+
+/* =========================== MODERNO "CLEAN" =========================== */
+.page.modern {
+  font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+  color: #0f172a;
+}
+
+.page.modern .modern-grid {
+  display: grid;
+  grid-template-columns: 38% 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 8mm 10mm;
+}
+
+/* Header (duas colunas) */
+.page.modern .modern-header { grid-column: 1 / -1; }
+.page.modern .modern-header-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10mm;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6pt;
+  margin-bottom: 2mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.page.modern .modern-name {
+  font-weight: 800;
+  letter-spacing: 0.2pt;
+  font-size: 22pt;
+  line-height: 1.15;
+  margin: 0;
+}
+.page.modern .modern-role {
+  margin: 2pt 0 0 0;
+  font-size: 12pt;
+  font-weight: 500;
+  color: #0ea5e9;
+}
+.page.modern .modern-photo {
+  width: 28mm; height: 28mm; object-fit: cover;
+  border-radius: 8mm;
+  border: 0.5pt solid #e2e8f0;
+  background: #fff;
+}
+
+/* Colunas */
+.page.modern .modern-col.left  { grid-column: 1; }
+.page.modern .modern-col.right { grid-column: 2; }
+
+/* Seções/Texto */
+.page.modern .modern-section { margin: 0 0 10pt 0; }
+.page.modern .modern-sec {
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 10pt;
+  letter-spacing: .6pt;
+  color: #334155;
+  margin: 0 0 6pt 0;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.page.modern .modern-sub { font-weight: 600; font-size: 10.5pt; color: #475569; margin: 6pt 0 4pt 0; }
+.page.modern .muted { color: #64748b; }
+.page.modern p { margin: 0 0 6pt 0; text-align: left; text-indent: 0; }
+.page.modern ul { margin: 0 0 6pt 1.1em; padding: 0; }
+.page.modern li { margin: 0 0 3pt 0; }
+
+/* Entradas */
+.page.modern .modern-entry {
+  margin: 0 0 8pt 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -webkit-region-break-inside: avoid;
+}
+.page.modern .modern-entry-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 6pt;
+  margin-bottom: 2pt;
+}
+
+/* Contatos */
+.page.modern .modern-contact .row {
+  display: grid; grid-template-columns: 28mm 1fr; gap: 4mm;
+  margin: 0 0 4pt 0;
+}
+.page.modern .modern-contact dt { color: #64748b; font-weight: 500; }
+.page.modern a.link-plain { color: inherit; text-decoration: none; }
+.page.modern .break-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+/* Tags */
+.page.modern .tag-list { display: flex; flex-wrap: wrap; gap: 4pt 6pt; margin: 0; padding: 0; list-style: none; }
+.page.modern .tag {
+  display: inline-flex; align-items: center; gap: 3pt;
+  padding: 2pt 6pt; border-radius: 9999px;
+  background: #f1f5f9; color: #0f172a; border: 0.5pt solid #e2e8f0;
+  font-size: 9.5pt;
+}
+
+/* Bullets */
+.page.modern .bullets { margin: 0 0 6pt 1.1em; }
+
+/* Quebras */
+.page.modern .keep-with-next { break-after: avoid; }
+.page.modern .no-split      {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  -webkit-region-break-inside: avoid;
+}
+
+/* Hard/Idiomas – barras (opcional) */
+.page.modern .hard-list,
+.page.modern .lang-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6pt; }
+.page.modern .skillbar { margin: 0; }
+.page.modern .skillbar-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6pt; margin-bottom: 3pt; }
+.page.modern .skillbar-name { font-weight: 600; }
+.page.modern .skillbar-level { color: #64748b; font-size: 9.5pt; white-space: nowrap; }
+.page.modern .skillbar-track {
+  position: relative; height: 6px; background: #e5e7eb; border: 0.5pt solid #e2e8f0; border-radius: 9999px; overflow: hidden;
+}
+.page.modern .skillbar-fill {
+  height: 100%; background: #9ca3af; border-right: 0.5pt solid #475569; transition: width .3s ease;
+}

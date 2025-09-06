@@ -1,20 +1,17 @@
 // src/components/preview/ResumePreview.tsx
-// Despacha para o template escolhido.
+import ClassicABNT from './templates/ClassicABNT';
+import ModernClean from './templates/ModernClean';
 
-import React from 'react';
-import { ClassicABNT, ModernClean } from './templates';
+export type ResumeTemplateId = 'classico' | 'modern';
 
-export type ResumeTemplateId = 'classico' | 'clean';
+type Props = { template: ResumeTemplateId };
 
-export default function ResumePreview({
-  template,
-}: {
-  template: ResumeTemplateId;
-}) {
+export default function ResumePreview({ template }: Props) {
   switch (template) {
-    case 'clean':
-      return <ModernClean />;
     case 'classico':
+      return <ClassicABNT />; // ⚠️ o template já renderiza <div id="cv-page" class="page abnt">
+    case 'modern':
+      return <ModernClean />; // ⚠️ o template já renderiza <div id="cv-page" class="page modern">
     default:
       return <ClassicABNT />;
   }

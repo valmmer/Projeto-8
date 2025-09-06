@@ -1,6 +1,6 @@
 // src/components/SkillsForm.tsx
 import { useMemo, useRef, useState } from 'react';
-import { useResume, rid } from '../state'; // barrel
+import { useResume, rid } from '../state';
 import type { SkillLevel } from '../types';
 
 import {
@@ -118,11 +118,18 @@ export default function SkillsForm() {
 
   /* ========= Add via chip (sugestões) ========= */
   function addSuggestion(label: string, chipTipo: TipoSkill) {
+    // limite
+    if (state.skills.length >= MAX_SKILLS) {
+      announce(`Limite de ${MAX_SKILLS} habilidades atingido.`);
+      return;
+    }
+
     const key = normKey(label);
     if (existingKeys.has(key)) {
       announce(`${label} já está na sua lista.`);
       return;
     }
+
     // Para Soft ignoramos o nível do seletor; Preview não exibe.
     const nivelToSave: SkillLevel = chipTipo === 'Soft' ? 'Básico' : nivel;
 
@@ -130,6 +137,7 @@ export default function SkillsForm() {
       type: 'ADD_SKILL',
       payload: { id: rid(), nome: label, nivel: nivelToSave, tipo: chipTipo },
     });
+
     announce(
       `Adicionada: ${label} (${chipTipo}${chipTipo === 'Hard' ? `, ${nivel}` : ''}).`,
     );
@@ -168,12 +176,14 @@ export default function SkillsForm() {
             suggestions={HARD_SUGGESTIONS}
             tipo="Hard"
             onAdd={addSuggestion}
+            excludeKeys={existingKeys}
           />
           <SuggestionChips
             label="Soft Skills (clique para adicionar):"
             suggestions={SOFT_SUGGESTIONS}
             tipo="Soft"
             onAdd={addSuggestion}
+            excludeKeys={existingKeys}
           />
         </div>
       </div>

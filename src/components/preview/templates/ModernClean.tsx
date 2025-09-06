@@ -1,253 +1,458 @@
-// Modern Clean — títulos com cor, layout claro, listas consistentes.
-// Root continua sendo <article className="page template-modern abnt"> se quiser
-// manter tipografia ABNT; se preferir Inter sem recuo, remova "abnt" do root.
+// src/components/preview/templates/ModernClean.tsx
+// -----------------------------------------------------------------------------
+// MODERNO "CLEAN" — 2 colunas, sans-serif, hierarquia clara.
+// Reutiliza os mesmos helpers de format.ts e o mesmo wrapper #cv-page/#cv-content.
+// -----------------------------------------------------------------------------
 
 import { useResume } from '../../../state';
+import type { Skill } from '../../../types';
+import {
+  formatPeriod,
+  splitBullets,
+  sortByMostRecentPeriod,
+  sortByYearDesc,
+  rankLangLevel,
+  displayLangLevel,
+  sortSkills,
+} from '../../../lib/format';
 
-function keyOf(val: any, fallback: string, i: number) {
-  return val?.id ?? `${fallback}-${i}`;
+function keyOf(val: any, fb: string, i: number) {
+  return val?.id ?? `${fb}-${i}`;
+}
+
+/* ========================= Helpers de proficiência ========================= */
+
+// Hard skills: Básico/Intermediário/Avançado ou escala 0..5 → %
+function skillLevelToPercent(nivel?: string): number {
+  if (!nivel) return 0;
+  const t = nivel.trim().toLowerCase();
+
+  // Português comum
+  if (t.startsWith('av')) return 100; // Avançado
+  if (t.startsWith('in')) return 66; // Intermediário
+  if (t.startsWith('bá') || t.startsWith('ba')) return 33; // Básico
+
+  // Números (0..5)
+  const n = Number(t.replace(',', '.'));
+  if (!Number.isNaN(n) && n >= 0 && n <= 5) return Math.round((n / 5) * 100);
+
+  return 0;
+}
+
+// Idiomas: CEFR (A1..C2) ou PT → %
+function langLevelToPercent(nivel?: string): number {
+  if (!nivel) return 0;
+  const n = displayLangLevel(nivel); // normaliza para "A1..C2" ou "Básico/Intermediário/Avançado"
+  const map: Record<string, number> = {
+    A1: 15,
+    A2: 30,
+    B1: 50,
+    B2: 70,
+    C1: 85,
+    C2: 100,
+    Básico: 30,
+    Intermediário: 60,
+    Avançado: 90,
+  };
+  return map[n] ?? 0;
 }
 
 export default function ModernClean() {
   const { state } = useResume();
   const { dados, skills, experiencias, formacoes, certificacoes, idiomas } =
-    state;
+    (state as any) ?? {};
 
-  const soft = skills.filter((s: any) => s.tipo === 'Soft');
-  const hard = skills.filter((s: any) => s.tipo !== 'Soft');
+  const objetivo = dados?.objetivo?.trim();
 
-  const contactLines = [
-    dados.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
-    dados.telefone?.trim() ? `Telefone: ${dados.telefone.trim()}` : null,
-    dados.linkedin?.trim() ? `LinkedIn: ${dados.linkedin.trim()}` : null,
-    (dados as any)?.github?.trim()
-      ? `GitHub: ${(dados as any).github.trim()}`
-      : null,
-    dados.site?.trim() ? `Site/Portfólio: ${dados.site.trim()}` : null,
-    dados.cidadePais?.trim() ? `Cidade/País: ${dados.cidadePais.trim()}` : null,
-  ].filter(Boolean) as string[];
+  const contactHasAny =
+    !!dados?.email?.trim() ||
+    !!dados?.telefone?.trim() ||
+    !!dados?.cidadePais?.trim() ||
+    !!dados?.linkedin?.trim() ||
+    !!dados?.github?.trim() ||
+    !!dados?.site?.trim();
+
+  const { hard: hardS, soft: softS } = sortSkills((skills as Skill[]) ?? []);
 
   return (
-    // Se quiser manter regras ABNT (recuo/justify), mantenha "abnt" aqui.
-    // Se preferir um Modern sem recuo nos parágrafos, remova "abnt" e ajuste CSS.
-    <article className="page template-modern abnt text-black leading-relaxed">
-      <header className="mb-6 keep-with-next">
-        <div className="header-grid">
-          {dados.foto?.trim() ? (
-            <img
-              src={dados.foto}
-              alt={dados.nome || 'Foto'}
-              className="photo"
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
-              loading="eager"
-            />
-          ) : (
-            <div
-              className="photo grid place-items-center text-slate-500 text-xs"
-              style={{
-                width: '32mm',
-                height: '32mm',
-                border: '0.5pt solid #cbd5e1',
-                borderRadius: '2mm',
-              }}
-            >
-              Sem foto
+    <div
+      id="cv-page"
+      className="page modern"
+      data-template="modern"
+      lang="pt-BR"
+    >
+      <div id="cv-content" className="content modern-grid">
+        {/* ====== HEADER (topo, ocupa largura total) ====== */}
+        <header className="modern-header keep-with-next no-split">
+          <div className="modern-header-inner">
+            <div className="modern-head-main">
+              <h1 className="modern-name">
+                {dados?.nome || 'Seu Nome Completo'}
+              </h1>
+              {dados?.titulo?.trim() && (
+                <h2 className="modern-role">{dados.titulo.trim()}</h2>
+              )}
             </div>
+
+            {dados?.foto?.trim() ? (
+              <img
+                src={dados.foto}
+                alt={dados?.nome || 'Foto'}
+                className="modern-photo"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                loading="eager"
+              />
+            ) : null}
+          </div>
+        </header>
+
+        {/* ====== COLUNA ESQUERDA ====== */}
+        <aside className="modern-col left no-split">
+          {/* Contatos */}
+          {contactHasAny && (
+            <section className="modern-section">
+              <h3 className="modern-sec">Contato</h3>
+              <dl className="modern-contact">
+                {dados?.email?.trim() && (
+                  <div className="row">
+                    <dt>E-mail</dt>
+                    <dd>
+                      <a
+                        className="link-plain break-anywhere"
+                        href={`mailto:${dados.email.trim()}`}
+                      >
+                        {dados.email.trim()}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {dados?.telefone?.trim() && (
+                  <div className="row">
+                    <dt>Telefone</dt>
+                    <dd>
+                      <a
+                        className="link-plain"
+                        href={`tel:${dados.telefone.replace(/[^\d+]/g, '')}`}
+                      >
+                        {dados.telefone}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {dados?.cidadePais?.trim() && (
+                  <div className="row">
+                    <dt>Local</dt>
+                    <dd>{dados.cidadePais.trim()}</dd>
+                  </div>
+                )}
+                {dados?.linkedin?.trim() && (
+                  <div className="row">
+                    <dt>LinkedIn</dt>
+                    <dd>
+                      <a
+                        className="link-plain break-anywhere"
+                        href={dados.linkedin.trim()}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dados.linkedin.trim()}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {dados?.github?.trim() && (
+                  <div className="row">
+                    <dt>GitHub</dt>
+                    <dd>
+                      <a
+                        className="link-plain break-anywhere"
+                        href={dados.github.trim()}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dados.github.trim()}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {dados?.site?.trim() && (
+                  <div className="row">
+                    <dt>Site</dt>
+                    <dd>
+                      <a
+                        className="link-plain break-anywhere"
+                        href={dados.site.trim()}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dados.site.trim()}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </section>
           )}
 
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight">
-              {dados.nome || 'Seu Nome'}
-            </h1>
-            <div className="contact-lines mt-1 break-words">
-              {[
-                dados.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
-                dados.telefone?.trim()
-                  ? `Telefone: ${dados.telefone.trim()}`
-                  : null,
-                dados.linkedin?.trim()
-                  ? `LinkedIn: ${dados.linkedin.trim()}`
-                  : null,
-                (dados as any)?.github?.trim()
-                  ? `GitHub: ${(dados as any).github.trim()}`
-                  : null,
-                dados.site?.trim()
-                  ? `Site/Portfólio: ${dados.site.trim()}`
-                  : null,
-                dados.cidadePais?.trim()
-                  ? `Cidade/País: ${dados.cidadePais.trim()}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .map((line, i) => (
-                  <p key={`contact-${i}`} className="no-indent">
-                    {line}
-                  </p>
-                ))}
-            </div>
-          </div>
-        </div>
-        <div className="h-[2px] bg-brand-500 mt-4" />
-      </header>
+          {/* Habilidades */}
+          <section className="modern-section">
+            <h3 className="modern-sec">Habilidades</h3>
+            {hardS.length === 0 && softS.length === 0 ? (
+              <p className="placeholder">Adicione suas habilidades…</p>
+            ) : (
+              <>
+                {/* Hard com BARRAS */}
+                {hardS.length > 0 && (
+                  <>
+                    <h4 className="modern-sub">Hard</h4>
+                    <ul className="hard-list">
+                      {hardS.map((s: any, i: number) => {
+                        const pct = skillLevelToPercent(s?.nivel);
+                        return (
+                          <li
+                            className="skillbar"
+                            key={keyOf(s, `hard-${s?.nome}`, i)}
+                          >
+                            <div className="skillbar-row">
+                              <span className="skillbar-name">{s?.nome}</span>
+                              {s?.nivel ? (
+                                <span className="skillbar-level">
+                                  {s.nivel}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="skillbar-track" aria-hidden="true">
+                              <div
+                                className="skillbar-fill"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="sr-only">
+                              Proficiência em {s?.nome}:{' '}
+                              {s?.nivel || 'sem nível'}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
-      {(dados as any)?.objetivo?.trim() && (
-        <Section title="Objetivo">
-          <p className="text-justify">{(dados as any).objetivo}</p>
-        </Section>
-      )}
+                {/* Soft como tags */}
+                {softS.length > 0 && (
+                  <>
+                    <h4 className="modern-sub">Soft</h4>
+                    <ul className="tag-list">
+                      {softS.map((s: any, i: number) => (
+                        <li
+                          className="tag"
+                          key={keyOf(s, `soft-${s?.nome}`, i)}
+                        >
+                          {s?.nome}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            )}
+          </section>
 
-      <Section title="Resumo">
-        <p className="text-justify">
-          {dados.resumo || 'Adicione um resumo profissional...'}
-        </p>
-      </Section>
+          {/* Idiomas (com BARRAS) */}
+          <section className="modern-section">
+            <h3 className="modern-sec">Idiomas</h3>
+            {Array.isArray(idiomas) && idiomas.length ? (
+              <ul className="lang-list">
+                {[...idiomas]
+                  .sort((a: any, b: any) => {
+                    const r = rankLangLevel(b?.nivel) - rankLangLevel(a?.nivel);
+                    if (r !== 0) return r;
+                    return (a?.idioma || '').localeCompare(
+                      b?.idioma || '',
+                      'pt',
+                      {
+                        sensitivity: 'base',
+                      },
+                    );
+                  })
+                  .map((l: any, i: number) => {
+                    const levelText = l?.nivel ? displayLangLevel(l.nivel) : '';
+                    const pct = langLevelToPercent(l?.nivel);
+                    return (
+                      <li
+                        className="skillbar"
+                        key={keyOf(l, `lang-${l?.idioma}`, i)}
+                      >
+                        <div className="skillbar-row">
+                          <span className="skillbar-name">{l?.idioma}</span>
+                          {levelText ? (
+                            <span className="skillbar-level">{levelText}</span>
+                          ) : null}
+                        </div>
+                        <div className="skillbar-track" aria-hidden="true">
+                          <div
+                            className="skillbar-fill"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="sr-only">
+                          Proficiência em {l?.idioma}:{' '}
+                          {levelText || 'sem nível'}
+                        </span>
+                      </li>
+                    );
+                  })}
+              </ul>
+            ) : (
+              <p className="placeholder">Adicione seus idiomas…</p>
+            )}
+          </section>
 
-      <Section title="Formação Acadêmica">
-        {formacoes.length ? (
-          <div className="mt-1">
-            {formacoes.map((f, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(f, `edu-${f.curso}-${f.instituicao}`, i)}
-              >
-                <p className="no-indent">
-                  <b>{f.curso}</b> — {f.instituicao}
-                  {f.periodo ? ` · ${f.periodo}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="no-indent">Adicione suas formações…</p>
-        )}
-      </Section>
-
-      <Section title="Habilidades">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 mb-1 no-indent">
-              Hard Skills
-            </h4>
-            {hard.length ? (
-              <ul className="list-disc pl-6">
-                {hard.map((s: any, i: number) => (
-                  <li key={keyOf(s, `skill-${s.nome}`, i)}>
-                    <p className="no-indent">
-                      {s.nome}
-                      {s.nivel ? (
-                        <>
-                          {' '}
-                          — <i>{s.nivel}</i>
-                        </>
-                      ) : null}
-                    </p>
+          {/* Certificações */}
+          <section className="modern-section">
+            <h3 className="modern-sec">Certificações</h3>
+            {Array.isArray(certificacoes) && certificacoes.length ? (
+              <ul className="bullets">
+                {sortByYearDesc(certificacoes, (c: any) => ({
+                  ano: c?.ano,
+                  orgao: c?.orgao,
+                  titulo: c?.titulo,
+                })).map((c: any, i: number) => (
+                  <li key={keyOf(c, `cert-${c?.titulo}`, i)}>
+                    {c?.titulo}
+                    {c?.orgao ? ` — ${c.orgao}` : ''}
+                    {c?.ano ? ` · ${c.ano}` : ''}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-slate-500 no-indent">—</p>
+              <p className="placeholder">Adicione suas certificações…</p>
             )}
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 mb-1 no-indent">
-              Soft Skills
-            </h4>
-            {soft.length ? (
-              <ul className="list-disc pl-6">
-                {soft.map((s: any, i: number) => (
-                  <li key={keyOf(s, `soft-${s.nome}`, i)}>
-                    <p className="no-indent">{s.nome}</p>
-                  </li>
-                ))}
-              </ul>
+          </section>
+        </aside>
+
+        {/* ====== COLUNA DIREITA ====== */}
+        <main className="modern-col right">
+          {/* Resumo */}
+          <section className="modern-section keep-with-next">
+            <h3 className="modern-sec">Sobre</h3>
+            <p>
+              {dados?.resumo || (
+                <span className="placeholder">
+                  Adicione um resumo profissional…
+                </span>
+              )}
+            </p>
+          </section>
+
+          {/* Objetivo (opcional) */}
+          {objetivo && (
+            <section className="modern-section keep-with-next">
+              <h3 className="modern-sec">Objetivo</h3>
+              <p>{objetivo}</p>
+            </section>
+          )}
+
+          {/* Experiência */}
+          <section className="modern-section keep-with-next">
+            <h3 className="modern-sec">Experiência</h3>
+            {Array.isArray(experiencias) && experiencias.length ? (
+              <div>
+                {sortByMostRecentPeriod(experiencias, (e: any) => ({
+                  inicio: e?.inicio,
+                  fim: e?.fim,
+                  atual: e?.atual,
+                })).map((e: any, i: number) => {
+                  const periodo = formatPeriod({
+                    periodo: e?.periodo,
+                    inicio: e?.inicio,
+                    fim: e?.fim,
+                    atual: e?.atual,
+                  });
+                  const bullets = splitBullets(e?.descricao);
+
+                  return (
+                    <div
+                      className="modern-entry no-split"
+                      key={keyOf(e, `exp-${e?.empresa}-${e?.cargo}`, i)}
+                    >
+                      <div className="modern-entry-head">
+                        <div className="a">
+                          <strong>{e?.cargo}</strong>
+                          {e?.empresa ? (
+                            <>
+                              {' '}
+                              · <span className="muted">{e.empresa}</span>
+                            </>
+                          ) : null}
+                        </div>
+                        {periodo && <div className="b muted">{periodo}</div>}
+                      </div>
+
+                      {bullets.length >= 2 ? (
+                        <ul className="bullets">
+                          {bullets.map((t: string, j: number) => (
+                            <li key={`exp-${i}-b-${j}`}>{t}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        e?.descricao && <p>{e.descricao}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <p className="text-slate-500 no-indent">—</p>
+              <p className="placeholder">Adicione suas experiências…</p>
             )}
-          </div>
-        </div>
-      </Section>
+          </section>
 
-      <Section title="Experiência Profissional">
-        {experiencias.length ? (
-          <div className="mt-1">
-            {experiencias.map((e, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(e, `exp-${e.empresa}-${e.cargo}`, i)}
-              >
-                <p className="no-indent font-bold">
-                  {e.cargo} — {e.empresa}
-                </p>
-                <p className="no-indent italic">
-                  {e.periodo}
-                  {e.atual ? ' (atual)' : ''}
-                </p>
-                <p>{e.descricao}</p>
+          {/* Formação */}
+          <section className="modern-section keep-with-next">
+            <h3 className="modern-sec">Formação</h3>
+            {Array.isArray(formacoes) && formacoes.length ? (
+              <div>
+                {sortByMostRecentPeriod(formacoes, (f: any) => ({
+                  inicio: f?.inicio,
+                  fim: f?.fim,
+                  atual: f?.atual,
+                })).map((f: any, i: number) => {
+                  const periodo = formatPeriod({
+                    periodo: f?.periodo,
+                    inicio: f?.inicio,
+                    fim: f?.fim,
+                    atual: f?.atual,
+                  });
+
+                  return (
+                    <div
+                      className="modern-entry no-split"
+                      key={keyOf(f, `edu-${f?.curso}-${f?.instituicao}`, i)}
+                    >
+                      <div className="modern-entry-head">
+                        <div className="a">
+                          <strong>{f?.curso}</strong>
+                          {f?.instituicao ? (
+                            <>
+                              {' '}
+                              · <span className="muted">{f.instituicao}</span>
+                            </>
+                          ) : null}
+                        </div>
+                        {periodo && <div className="b muted">{periodo}</div>}
+                      </div>
+                      {f?.obs && <p>{f.obs}</p>}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="no-indent">Adicione suas experiências…</p>
-        )}
-      </Section>
-
-      <Section title="Certificações">
-        {certificacoes.length ? (
-          <div className="mt-1">
-            {certificacoes.map((c, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(c, `cert-${c.titulo}`, i)}
-              >
-                <p className="no-indent">
-                  {c.titulo}
-                  {c.orgao ? ` — ${c.orgao}` : ''}
-                  {c.ano ? ` · ${c.ano}` : ''}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="no-indent">Adicione suas certificações…</p>
-        )}
-      </Section>
-
-      <Section title="Idiomas">
-        {idiomas.length ? (
-          <div className="mt-1">
-            {idiomas.map((l, i) => (
-              <div
-                className="entry no-split"
-                key={keyOf(l, `lang-${l.idioma}`, i)}
-              >
-                <p className="no-indent">
-                  {l.idioma} — <i>{l.nivel}</i>
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="no-indent">Adicione seus idiomas…</p>
-        )}
-      </Section>
-    </article>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mb-4 keep-with-next">
-      <h3 className="text-lg font-semibold text-brand-700 no-indent">
-        {title}
-      </h3>
-      <div className="mt-1">{children}</div>
-    </section>
+            ) : (
+              <p className="placeholder">Adicione suas formações…</p>
+            )}
+          </section>
+        </main>
+      </div>
+    </div>
   );
 }

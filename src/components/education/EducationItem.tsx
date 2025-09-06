@@ -1,82 +1,88 @@
 import React from 'react';
-import PeriodPicker from './PeriodPicker';
+import PeriodPicker from '../education/PeriodPicker';
 import type { Education } from './types';
 
-// Componente que representa UM item de formação (Education).
+type Props = {
+  item: Education;
+  index: number;
+  onChange: (next: Education) => void;
+  onRemove: (id: string) => void;
+  errors?: Partial<Record<keyof Education, string>>;
+};
+
 export default function EducationItem({
   item,
   onChange,
   onRemove,
   index,
   errors = {},
-}: {
-  item: Education;
-  index: number;
-  onChange: (next: Education) => void; // Atualiza esse item
-  onRemove: (id: string) => void; // Remove esse item
-  errors?: Partial<Record<keyof Education, string>>; // Erros de validação
-}) {
-  // Atualiza parte do objeto mantendo o resto.
+}: Props) {
   const set = (patch: Partial<Education>) => onChange({ ...item, ...patch });
+  const hasErr = !!(errors.instituicao || errors.curso || errors.periodo);
 
   return (
-    <div className="rounded-2xl border p-4 space-y-3 bg-white/70">
+    <div
+      className={`rounded-2xl border p-4 space-y-4 bg-white/80 ${hasErr ? 'ring-1 ring-red-300' : ''}`}
+    >
+      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold">Formação #{index + 1}</h4>
+        <h4 className="font-semibold text-slate-800">Formação #{index + 1}</h4>
         <button
           type="button"
-          className="text-sm text-red-600 hover:underline"
+          className="text-sm text-slate-500 hover:text-red-600"
           onClick={() => onRemove(item.id)}
+          aria-label={`Remover formação ${index + 1}`}
+          title="Remover"
         >
           Remover
         </button>
       </div>
 
+      {/* Grid (2 colunas no desktop) */}
       <div className="grid md:grid-cols-2 gap-3">
         {/* Instituição */}
         <div>
-          <label className="text-sm font-medium">Instituição *</label>
+          <label htmlFor={`edu-inst-${item.id}`} className="label">
+            Instituição *
+          </label>
           <input
-            className="border rounded p-2 w-full"
+            id={`edu-inst-${item.id}`}
+            className={`input ${errors.instituicao ? 'ring-2 ring-red-500 border-red-500' : ''}`}
             value={item.instituicao}
             onChange={(e) => set({ instituicao: e.target.value })}
+            placeholder="Ex.: Universidade Federal..."
           />
           {errors.instituicao && (
-            <p className="text-xs text-red-600">{errors.instituicao}</p>
+            <p className="help text-red-600">{errors.instituicao}</p>
           )}
         </div>
 
         {/* Curso */}
         <div>
-          <label className="text-sm font-medium">Curso *</label>
+          <label htmlFor={`edu-curso-${item.id}`} className="label">
+            Curso *
+          </label>
           <input
-            className="border rounded p-2 w-full"
+            id={`edu-curso-${item.id}`}
+            className={`input ${errors.curso ? 'ring-2 ring-red-500 border-red-500' : ''}`}
             value={item.curso}
             onChange={(e) => set({ curso: e.target.value })}
+            placeholder="Ex.: Bacharelado em Sistemas de Informação"
           />
-          {errors.curso && (
-            <p className="text-xs text-red-600">{errors.curso}</p>
-          )}
+          {errors.curso && <p className="help text-red-600">{errors.curso}</p>}
         </div>
 
-        {/* Cidade (opcional) */}
-        <div>
-          <label className="text-sm font-medium">Cidade</label>
-          <input
-            className="border rounded p-2 w-full"
-            value={item.cidade ?? ''}
-            onChange={(e) => set({ cidade: e.target.value })}
+        {/* Período */}
+        <div className="md:col-span-2">
+          <label className="label">Período *</label>
+          <PeriodPicker
+            value={item.periodo}
+            onChange={(v) => set({ periodo: v })}
+            allowOpenEnded
+            error={errors.periodo}
           />
+          {/* Não duplicar erro aqui: o PeriodPicker já exibe */}
         </div>
-
-        {/* Período (usa o componente PeriodPicker) */}
-        <PeriodPicker
-          value={item.periodo}
-          onChange={(v) => set({ periodo: v })}
-          label="Período"
-          required
-          error={errors.periodo}
-        />
       </div>
     </div>
   );
