@@ -1,6 +1,6 @@
 /* src/styles/print.css
    — A4 com margens ABNT (30/20/20/30mm)
-   — ABNT (Times 12pt, entrelinha 1.5, recuo 1.25cm)
+   — ABNT (Times New Roman 12pt, entrelinha 1.5, recuo 1.25cm, cor preta)
    — Modern Clean (sans, 2 colunas)
 */
 
@@ -21,11 +21,12 @@
 /* Padding só no preview (para “simular” as margens do @page) */
 .page .content { padding: 30mm 20mm 20mm 30mm; }
 
-/* Export/print: zera padding p/ não somar com @page */
+/* Export/print: zera padding p/ não somar com @page
+   (deixe o @page controlar as margens) */
 .page.exporting .content {
   padding: 0 !important;
-  width: 160mm !important;      /* 210 - 30 - 20 */
-  max-width: 160mm !important;
+  width: auto !important;
+  max-width: none !important;
 }
 
 /* ====================== PRINT (consolidado) ====================== */
@@ -49,21 +50,24 @@
 }
 
 /* =========================== CLÁSSICO ABNT =========================== */
+/* ⚠️ Padrão ABNT estrito: Times New Roman, 12pt, cor preta, peso normal
+      (negrito apenas para títulos). */
 .page.abnt {
   font-family: "Times New Roman", Times, serif;
   font-size: 12pt;
   line-height: 1.5;
-  color: #0f172a;
+  color: #000;                 /* preto obrigatório */
+  /* sem font-weight base para manter 400 (normal) */
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   hyphens: auto;
 }
 .page.abnt * { font-variant-numeric: lining-nums; }
 
-/* Títulos */
+/* Títulos (negrito permitido) */
 .page.abnt h3.sec {
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 700;            /* negrito */
   letter-spacing: 0.4pt;
   font-size: 12pt;
   margin: 12pt 0 6pt 0;
@@ -71,27 +75,28 @@
   page-break-after: avoid;
 }
 .page.abnt h4.sub {
-  font-weight: 700;
+  font-weight: 700;            /* negrito */
   font-size: 12pt;
   margin: 8pt 0 4pt 0;
   break-after: avoid;
   page-break-after: avoid;
 }
 
-/* Parágrafos */
+/* Parágrafos (corpo normal) */
 .page.abnt p {
   margin: 0 0 6pt 0;
   text-align: justify;
-  text-indent: 1.25cm;
+  text-indent: 1.25cm;         /* recuo 1,25 cm */
+  /* peso normal conforme ABNT */
 }
 .page.abnt p.no-indent { text-indent: 0; }
 
-/* Listas */
+/* Listas (corpo normal) */
 .page.abnt ul {
   margin: 0 0 6pt 1.25cm;
   padding: 0;
   list-style-position: outside;
-  break-inside: auto;                 /* permite quebrar entre <li> */
+  break-inside: auto;
   page-break-inside: auto;
 }
 .page.abnt li {
@@ -100,17 +105,12 @@
   page-break-inside: avoid;
   -webkit-column-break-inside: avoid;
   -webkit-region-break-inside: avoid;
+  /* peso normal conforme ABNT */
 }
 .page.abnt li p { text-indent: 0; margin: 0; }
 
-/* Entradas e quebras */
-.page.abnt .entry {
-  margin: 0 0 8pt 0;
-  break-inside: avoid;
-  page-break-inside: avoid;
-  -webkit-column-break-inside: avoid;
-  -webkit-region-break-inside: avoid;
-}
+/* Entradas e quebras (deixe .no-split só onde necessário) */
+.page.abnt .entry { margin: 0 0 8pt 0; }
 .page.abnt .keep-with-next {
   break-after: avoid;
   page-break-after: avoid;
@@ -122,7 +122,7 @@
   -webkit-region-break-inside: avoid;
 }
 
-/* Órfãs/viúvas mais suaves (reduz “empurrões” de página) */
+/* Órfãs/viúvas */
 .page.abnt p,
 .page.abnt li { orphans: 2; widows: 2; }
 
@@ -132,7 +132,7 @@
   grid-template-columns: 30mm 1fr;
   column-gap: 6mm;
   align-items: start;
-  margin-bottom: 6pt; /* um pouco menor que 8pt pra evitar sobra de página */
+  margin-bottom: 6pt;
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -152,14 +152,14 @@
   margin: 0 0 4pt 0;
   text-transform: uppercase;
   letter-spacing: 0.3pt;
-  font-weight: 700;
+  font-weight: 700;            /* negrito permitido */
   font-size: 16pt;
   line-height: 1.2;
 }
 .page.abnt .abnt-subheadline {
   margin: 2pt 0 4pt 0;
   font-size: 12pt;
-  font-weight: 600;
+  font-weight: 600;            /* pode manter sem exagero */
 }
 
 /* Metadados & links */
@@ -174,6 +174,24 @@
   border: none;
   border-top: 0.5pt solid #e2e8f0;
   margin: 8pt 0 6pt 0;
+}
+
+/* ==================== ABNT — utilitários opcionais ==================== */
+/* Citação longa (mais de 3 linhas): 10pt, espaçamento simples, sem recuo. */
+.page.abnt .abnt-citacao,
+.page.abnt blockquote.abnt {
+  font-size: 10pt;
+  line-height: 1.15;          /* simples/levemente acima */
+  margin: 6pt 0 6pt 4cm;      /* recuo à esquerda ~4 cm */
+  text-indent: 0;
+}
+
+/* Notas de rodapé / legendas / paginação (10pt, simples) */
+.page.abnt .abnt-nota,
+.page.abnt .abnt-legenda,
+.page.abnt .abnt-paginacao {
+  font-size: 10pt;
+  line-height: 1.15;
 }
 
 /* =========================== MODERNO "CLEAN" =========================== */
@@ -247,13 +265,7 @@
 .page.modern li { margin: 0 0 3pt 0; }
 
 /* Entradas */
-.page.modern .modern-entry {
-  margin: 0 0 8pt 0;
-  break-inside: avoid;
-  page-break-inside: avoid;
-  -webkit-column-break-inside: avoid;
-  -webkit-region-break-inside: avoid;
-}
+.page.modern .modern-entry { margin: 0 0 8pt 0; }
 .page.modern .modern-entry-head {
   display: grid;
   grid-template-columns: 1fr auto;
