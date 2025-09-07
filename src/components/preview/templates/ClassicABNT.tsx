@@ -4,6 +4,9 @@
 // - Margens e tipografia vêm do CSS (.page.abnt + @page abnt).
 // - Este componente organiza o conteúdo e aplica classes utilitárias.
 // - O wrapper #cv-page / #cv-content é importante para impressão/export.
+// - Melhorias:
+//   • Mostra IDADE ao lado de Cidade/Estado no cabeçalho.
+//   • Seção HABILIDADES em DUAS colunas (Hard | Soft) com grid.
 // -----------------------------------------------------------------------------
 
 import { useResume } from '../../../state';
@@ -25,6 +28,38 @@ function keyOf(val: any, fallback: string, i: number) {
   return val?.id ?? `${fallback}-${i}`;
 }
 
+/** Converte a data e calcula idade (aceita "YYYY-MM-DD" ou "DD/MM/YYYY"). */
+function calcAge(dateStr?: string | null): number | null {
+  if (!dateStr) return null;
+
+  // tenta ISO
+  let y = 0,
+    m = 0,
+    d = 0;
+  let mIso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (mIso) {
+    y = +mIso[1];
+    m = +mIso[2];
+    d = +mIso[3];
+  } else {
+    // tenta BR
+    const mBr = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dateStr);
+    if (!mBr) return null;
+    d = +mBr[1];
+    m = +mBr[2];
+    y = +mBr[3];
+  }
+
+  const birth = new Date(y, m - 1, d);
+  if (isNaN(birth.getTime())) return null;
+
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  const md = now.getMonth() - (m - 1);
+  if (md < 0 || (md === 0 && now.getDate() < d)) age--;
+  return age >= 0 && age <= 120 ? age : null;
+}
+
 export default function ClassicABNT() {
   const { state } = useResume();
   const { dados, skills, experiencias, formacoes, certificacoes, idiomas } =
@@ -33,7 +68,7 @@ export default function ClassicABNT() {
   // Campo opcional (só mostra se vier preenchido)
   const objetivo = dados?.objetivo?.trim();
 
-  // (Compat) Linhas de contato — não usamos no cabeçalho, mas mantido caso precise
+  // (Compat) Linhas de contato — mantido caso precise
   const contactLines = [
     dados?.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
     dados?.telefone?.trim() ? `Telefone: ${dados.telefone.trim()}` : null,
@@ -41,9 +76,12 @@ export default function ClassicABNT() {
     dados?.github?.trim() ? `GitHub: ${dados.github.trim()}` : null,
     dados?.site?.trim() ? `Site/Portfólio: ${dados.site.trim()}` : null,
     dados?.cidadePais?.trim()
-      ? `Cidade/País: ${dados.cidadePais.trim()}`
+      ? `Cidade/Estado: ${dados.cidadePais.trim()}`
       : null,
   ].filter(Boolean) as string[];
+
+  // idade calculada
+  const idade = calcAge(dados?.dataNascimento);
 
   return (
     // lang="pt-BR" ajuda a hifenização (hyphens:auto no CSS)
@@ -105,9 +143,15 @@ export default function ClassicABNT() {
                     </a>
                   </p>
                 )}
-                {dados?.cidadePais?.trim() && (
+
+                {/* ✅ IDADE + CIDADE/ESTADO na MESMA LINHA */}
+                {(idade != null || dados?.cidadePais?.trim()) && (
                   <p className="no-indent">
-                    Cidade/País: {dados.cidadePais.trim()}
+                    {idade != null ? <>Idade: {idade} anos</> : null}
+                    {idade != null && dados?.cidadePais?.trim() ? ' · ' : null}
+                    {dados?.cidadePais?.trim() ? (
+                      <>Cidade/Estado: {dados.cidadePais.trim()}</>
+                    ) : null}
                   </p>
                 )}
               </div>
@@ -224,7 +268,7 @@ export default function ClassicABNT() {
                       </p>
                     )}
 
-                    {/* Descrição: usa UL quando há 2+ itens; senão, parágrafo único */}
+                    {/* Descrição: UL quando houver 2+ itens; senão, parágrafo */}
                     {bullets.length >= 2 ? (
                       <ul>
                         {bullets.map((t: string, j: number) => (
@@ -318,7 +362,7 @@ export default function ClassicABNT() {
         </section>
 
         {/* ======================================================================
-            7) HABILIDADES (Hard / Soft)
+            7) HABILIDADES (Hard / Soft) — DUAS colunas
            ====================================================================== */}
         <section className="mb-4">
           <h3 className="sec keep-with-next">HABILIDADES</h3>
@@ -337,13 +381,21 @@ export default function ClassicABNT() {
                 </p>
               );
 
+            // ✅ grid de duas colunas — funciona na tela e na impressão
+            const gridStyle: React.CSSProperties = {
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              columnGap: '18pt',
+              alignItems: 'start',
+            };
+
             return (
-              <div>
-                {hasHard && (
-                  <div className="no-split keep-with-next">
-                    <h4 className="sub group-title keep-with-next">
-                      Hard Skills
-                    </h4>
+              <div style={gridStyle}>
+                <div className="no-split keep-with-next">
+                  <h4 className="sub group-title keep-with-next">
+                    Hard Skills
+                  </h4>
+                  {hasHard ? (
                     <ul>
                       {hardS.map((s: any, i: number) => (
                         <li key={keyOf(s, `hard-${s?.nome}`, i)}>
@@ -359,17 +411,16 @@ export default function ClassicABNT() {
                         </li>
                       ))}
                     </ul>
-                  </div>
-                )}
+                  ) : (
+                    <p className="no-indent placeholder">—</p>
+                  )}
+                </div>
 
-                {hasSoft && (
-                  <div
-                    className="no-split keep-with-next"
-                    style={{ marginTop: '8pt' }}
-                  >
-                    <h4 className="sub group-title keep-with-next">
-                      Soft Skills
-                    </h4>
+                <div className="no-split keep-with-next">
+                  <h4 className="sub group-title keep-with-next">
+                    Soft Skills
+                  </h4>
+                  {hasSoft ? (
                     <ul>
                       {softS.map((s: any, i: number) => (
                         <li key={keyOf(s, `soft-${s?.nome}`, i)}>
@@ -377,8 +428,10 @@ export default function ClassicABNT() {
                         </li>
                       ))}
                     </ul>
-                  </div>
-                )}
+                  ) : (
+                    <p className="no-indent placeholder">—</p>
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -399,9 +452,7 @@ export default function ClassicABNT() {
                   return (a?.idioma || '').localeCompare(
                     b?.idioma || '',
                     'pt',
-                    {
-                      sensitivity: 'base',
-                    },
+                    { sensitivity: 'base' },
                   );
                 })
                 .map((l: any, i: number) => (

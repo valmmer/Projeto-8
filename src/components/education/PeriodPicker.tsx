@@ -1,3 +1,4 @@
+// src/components/education/PeriodPicker.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 
 // "MM/YYYY - MM/YYYY" | "MM/YYYY - Atual"
@@ -54,6 +55,11 @@ type Props = {
   maxYear?: number;
   allowOpenEnded?: boolean;
   error?: string;
+  /** Texto de ajuda (por ex. diferente em Experiência) */
+  helpText?: string;
+  /** Rótulos customizáveis */
+  startLabel?: string;
+  endLabel?: string;
 };
 
 export default function PeriodPicker({
@@ -63,11 +69,12 @@ export default function PeriodPicker({
   maxYear,
   allowOpenEnded = true,
   error,
+  helpText,
+  startLabel = 'Início',
+  endLabel = 'Fim',
 }: Props) {
-  // 1) Estado interno para manter preenchimento parcial
   const [parts, setParts] = useState(() => split(value));
 
-  // 2) Se o value externo mudar (ex.: reset), sincroniza o estado interno
   useEffect(() => {
     const builtNow = isValidPeriod(value) ? value : '';
     const builtParts = isValidPeriod(build(parts)) ? build(parts) : '';
@@ -75,7 +82,6 @@ export default function PeriodPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  // anos disponíveis
   const years = useMemo(() => {
     const now = new Date().getFullYear();
     const min = typeof minYear === 'number' ? minYear : now - 60;
@@ -85,27 +91,20 @@ export default function PeriodPicker({
     return out;
   }, [minYear, maxYear]);
 
-  // aplica alterações locais + decide quando emitir onChange
   const set = (patch: Partial<typeof parts>) => {
     let next = { ...parts, ...patch };
-
-    // força política de "Atual" se desabilitado
     if (!allowOpenEnded) next.atual = false;
 
-    // UX: se escolheu início e fim está vazio (e não é Atual), copia início → fim
     const hasInicio = !!(next.iniMes && next.iniAno);
     const hasFim = !!(next.fimMes && next.fimAno);
     if (hasInicio && !next.atual && !hasFim) {
       next.fimMes = next.iniMes;
       next.fimAno = next.iniAno;
     }
-
-    // Se marcou "Atual", zera fim
     if (patch.atual === true) {
       next.fimMes = '';
       next.fimAno = '';
     }
-
     setParts(next);
 
     const inicioOk = !!(next.iniMes && next.iniAno);
@@ -119,7 +118,7 @@ export default function PeriodPicker({
     });
 
     if (inicioOk && fimOk && isValidPeriod(maybe)) onChange(maybe);
-    else onChange(''); // mantém vazio enquanto incompleto → validação mostra erro
+    else onChange('');
   };
 
   const clear = () => {
@@ -128,11 +127,17 @@ export default function PeriodPicker({
   };
 
   const hasValue = isValidPeriod(value);
+  const helpId = 'period-help';
+  const finalHelp = helpText ?? 'Ex.: 05/2021 - Atual ou 03/2019 - 08/2020';
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <div
-        className={`rounded-xl border bg-white/70 px-3 py-2 ${error ? 'ring-1 ring-red-500' : ''}`}
+        className={[
+          'rounded-2xl border bg-white/70 px-3 py-3',
+          error ? 'ring-1 ring-red-500 border-red-500/60' : '',
+        ].join(' ')}
+        aria-describedby={helpId}
       >
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
           {/* Início */}
@@ -165,26 +170,29 @@ export default function PeriodPicker({
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">Início</p>
+            <p className="text-[11px] text-slate-500 mt-1">{startLabel}</p>
           </div>
 
-          {/* Toggle "Atual" */}
-          {allowOpenEnded && (
-            <div className="sm:col-span-1 flex items-center justify-center">
+          {/* Centro: botão Atual */}
+          <div className="sm:col-span-1 flex items-center justify-center">
+            {allowOpenEnded ? (
               <button
                 type="button"
                 onClick={() => set({ atual: !parts.atual })}
-                className={`px-3 py-2 rounded-lg border transition ${
+                className={[
+                  'px-4 py-2 rounded-full border transition',
                   parts.atual
-                    ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'hover:bg-slate-50'
-                }`}
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'hover:bg-slate-50',
+                ].join(' ')}
                 aria-pressed={parts.atual}
               >
                 Atual
               </button>
-            </div>
-          )}
+            ) : (
+              <span className="text-slate-400 select-none">→</span>
+            )}
+          </div>
 
           {/* Fim */}
           {!parts.atual && (
@@ -217,17 +225,17 @@ export default function PeriodPicker({
                   ))}
                 </select>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">Fim</p>
+              <p className="text-[11px] text-slate-500 mt-1">{endLabel}</p>
             </div>
           )}
         </div>
 
         {/* Resumo + limpar */}
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="text-xs text-slate-600">
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="text-xs text-slate-600" aria-live="polite">
             {hasValue ? (
               <span className="inline-flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-slate-100">
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 border text-slate-700">
                   {value}
                 </span>
               </span>
@@ -240,7 +248,7 @@ export default function PeriodPicker({
           <button
             type="button"
             onClick={clear}
-            className="text-xs px-2 py-1 rounded-md border hover:bg-slate-50"
+            className="text-xs px-3 py-1.5 rounded-md border hover:bg-slate-50"
             aria-label="Limpar período"
           >
             Limpar
@@ -248,7 +256,14 @@ export default function PeriodPicker({
         </div>
       </div>
 
-      {error && <p className="help text-red-600">{error}</p>}
+      {/* Ajuda / erro */}
+      {error ? (
+        <p className="help text-red-600">{error}</p>
+      ) : (
+        <p id={helpId} className="help text-slate-500">
+          {finalHelp}
+        </p>
+      )}
     </div>
   );
 }

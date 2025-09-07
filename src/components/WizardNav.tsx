@@ -1,131 +1,115 @@
-// src/components/WizardNav.tsx
 import React from 'react';
+import Button from './ui/Button';
 
-type WizardNavProps = {
-  canBack: boolean;
-  canNext: boolean;
-  isLastStep?: boolean; // última etapa?
-  onBack: () => void;
-  onNext: () => void;
-  onFinish?: () => void; // chamado ao finalizar
-  nextLabel?: string; // texto do botão "Próximo"
-  finishLabel?: string; // texto do botão "Finalizar"
+type Props = {
+  // Progresso (opcional — se não vier, esconde o "Etapa X de Y")
+  current?: number; // índice 0-based
+  total?: number; // total de etapas
+
+  // Flags de habilitação (compat com uso antigo)
+  canBack?: boolean;
+  canNext?: boolean;
+
+  // Navegação:
+  //  - compatibilidade: aceite tanto onPrev quanto onBack
+  onPrev?: () => void;
+  onBack?: () => void;
+  onNext?: () => void;
+
+  onBeforeNext?: () => boolean | Promise<boolean>;
+
+  className?: string;
+  prevLabel?: string;
+  nextLabel?: string;
+  busy?: boolean;
+  hidePrev?: boolean;
 };
 
-/** Verifica se o alvo do evento é um campo editável (onde o usuário digita). */
-function isEditable(target: EventTarget | null) {
-  const el = target as HTMLElement | null;
-  if (!el) return false;
-  if (el.isContentEditable) return true;
-  const tag = el.tagName?.toLowerCase();
-  if (tag === 'textarea') return true;
-  if (tag === 'input') {
-    const type = (el as HTMLInputElement).type?.toLowerCase() || 'text';
-    const nonText = [
-      'button',
-      'submit',
-      'reset',
-      'checkbox',
-      'radio',
-      'range',
-      'file',
-      'color',
-      'image',
-      'hidden',
-    ];
-    return !nonText.includes(type);
-  }
-  return false;
-}
-
-const WizardNav: React.FC<WizardNavProps> = ({
+export default function WizardNav({
+  current,
+  total,
   canBack,
   canNext,
-  isLastStep = false,
+  onPrev,
   onBack,
   onNext,
-  onFinish,
+  onBeforeNext,
+  className = '',
+  prevLabel = 'Anterior',
   nextLabel = 'Próximo',
-  finishLabel = 'Finalizar',
-}) => {
-  const handleNext = () => {
-    if (!canNext) {
-      alert(
-        '⚠️ Por favor, complete todos os campos obrigatórios antes de continuar.',
-      );
-      return;
+  busy = false,
+  hidePrev = false,
+}: Props) {
+  // Fallbacks seguros (evitam NaN)
+  const hasNums =
+    Number.isFinite(current as number) &&
+    Number.isFinite(total as number) &&
+    Number(total) > 0;
+
+  const c0 = hasNums ? Number(current) : 0;
+  const t0 = hasNums ? Number(total) : 1;
+
+  // Clampa o índice
+  const c = Math.min(Math.max(0, c0), t0 - 1);
+  const t = t0;
+
+  // Handlers efetivos (compat onPrev/onBack)
+  const handlePrev = onPrev ?? onBack ?? (() => {});
+  const handleNext = async () => {
+    if (onBeforeNext) {
+      const ok = await onBeforeNext();
+      if (!ok) return;
     }
-    if (isLastStep && onFinish) {
-      onFinish();
-    } else {
-      onNext();
-    }
+    (onNext ?? (() => {}))();
   };
 
-  /**
-   * CAPTURA (capturing) de teclas no container:
-   * - Se a origem for um campo editável, não deixamos o evento "subir"
-   *   para listeners globais que possam capturar a barra de espaço.
-   */
-  const onKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (isEditable(e.target)) {
-      e.stopPropagation(); // deixa o campo inserir a tecla normalmente
-      return;
-    }
-    // Atalhos quando NÃO está em campo editável:
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleNext();
-      return;
-    }
-    if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault();
-      if (canBack) onBack();
-      return;
-    }
-  };
-
-  /** Teclas quando o botão Próximo/Finalizar está focado */
-  const onNextKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if ((e.key === 'Enter' || e.key === ' ') && canNext) {
-      e.preventDefault(); // evita scroll com Space
-      handleNext();
-    }
-  };
-
-  const nextBtnClasses = `px-4 py-2 rounded-xl text-white disabled:opacity-50 ${
-    canNext
-      ? 'bg-brand-500 hover:bg-brand-700'
-      : 'bg-gray-400 cursor-not-allowed'
-  }`;
+  // Regras de habilitação
+  const prevDisabled = typeof canBack === 'boolean' ? !canBack : c === 0;
+  const nextDisabled =
+    busy || (typeof canNext === 'boolean' ? !canNext : false);
 
   return (
     <div
-      className="flex justify-between gap-3 pt-4"
-      onKeyDownCapture={onKeyDownCapture}
+      className={`wizard-nav mt-6 pt-4 border-t flex items-center justify-between gap-3 ${className}`}
     >
-      <button
-        type="button"
-        disabled={!canBack}
-        aria-disabled={!canBack}
-        onClick={onBack}
-        className="px-4 py-2 rounded-xl border disabled:opacity-50"
-      >
-        Voltar
-      </button>
+      {/* Voltar */}
+      <div className="flex items-center">
+        {!hidePrev && (
+          <Button
+            type="button"
+            formNoValidate
+            variant="secondary"
+            onClick={handlePrev}
+            disabled={prevDisabled}
+            aria-label="Voltar"
+          >
+            {prevLabel}
+          </Button>
+        )}
+      </div>
 
-      <button
-        type="button"
-        disabled={!canNext}
-        aria-disabled={!canNext}
-        onClick={handleNext}
-        onKeyDown={onNextKeyDown}
-        className={nextBtnClasses}
-      >
-        {isLastStep ? finishLabel : nextLabel}
-      </button>
+      {/* Indicador de etapa */}
+      {hasNums ? (
+        <div className="text-sm text-neutral-600">
+          Etapa {c + 1} de {t}
+        </div>
+      ) : (
+        <div /> // placeholder para manter alinhamento quando não há números
+      )}
+
+      {/* Avançar */}
+      <div className="flex items-center">
+        <Button
+          type="button"
+          formNoValidate
+          onClick={handleNext}
+          isLoading={busy}
+          disabled={nextDisabled}
+          aria-label="Avançar"
+        >
+          {hasNums && c + 1 === t ? 'Finalizar' : nextLabel}
+        </Button>
+      </div>
     </div>
   );
-};
-
-export default WizardNav;
+}

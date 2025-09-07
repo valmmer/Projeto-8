@@ -25,16 +25,22 @@ type Action =
   | { type: 'NORMALIZE_DADOS' }
   | { type: 'ADD_SKILL'; payload: Skill }
   | { type: 'REMOVE_SKILL'; payload: string }
+  // ---- Experiências
   | { type: 'ADD_EXP'; payload: Experience }
   | { type: 'REMOVE_EXP'; payload: string }
+  | { type: 'SET_EXPS'; payload: Experience[] } // ✅ NOVO
+  // ---- Formações
   | { type: 'ADD_EDU'; payload: Education }
   | { type: 'REMOVE_EDU'; payload: string }
   | { type: 'SET_EDUS'; payload: Education[] }
+  // ---- Certificações
   | { type: 'ADD_CERT'; payload: Certification }
   | { type: 'REMOVE_CERT'; payload: string }
+  // ---- Idiomas
   | { type: 'ADD_LANG'; payload: Language }
   | { type: 'REMOVE_LANG'; payload: string }
-  | { type: 'HYDRATE'; payload: ResumeState }; // opcional: restaurar estado
+  // ---- Estado completo (opcional)
+  | { type: 'HYDRATE'; payload: ResumeState };
 
 // ---------------- Utils ----------------
 /** util id (fallback quando randomUUID não existir) */
@@ -121,6 +127,11 @@ function reducer(state: ResumeState, action: Action): ResumeState {
         ...state,
         experiencias: state.experiencias.filter((e) => e.id !== action.payload),
       };
+    case 'SET_EXPS': // ✅ NOVO: substitui a lista inteira
+      return {
+        ...state,
+        experiencias: action.payload.map((e) => withId(e)), // garante id nos itens
+      };
 
     // ---- Formações
     case 'ADD_EDU':
@@ -136,7 +147,7 @@ function reducer(state: ResumeState, action: Action): ResumeState {
     case 'SET_EDUS':
       return {
         ...state,
-        formacoes: action.payload.map((f) => withId(f)), // garante id nos itens carregados
+        formacoes: action.payload.map((f) => withId(f)), // garante id
       };
 
     // ---- Certificações

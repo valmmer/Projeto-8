@@ -1,7 +1,7 @@
 // src/components/preview/templates/ModernClean.tsx
 // -----------------------------------------------------------------------------
 // MODERNO "CLEAN" — 2 colunas, sans-serif, hierarquia clara.
-// Reutiliza os mesmos helpers de format.ts e o mesmo wrapper #cv-page/#cv-content.
+// Reutiliza helpers de format.ts e o wrapper #cv-page/#cv-content.
 // -----------------------------------------------------------------------------
 
 import { useResume } from '../../../state';
@@ -20,14 +20,34 @@ function keyOf(val: any, fb: string, i: number) {
   return val?.id ?? `${fb}-${i}`;
 }
 
-/* ========================= Helpers de proficiência ========================= */
+/* ========================= Helpers ========================= */
+
+// Idade a partir de "YYYY-MM-DD" ou "DD/MM/YYYY"
+function computeAge(dateStr?: string): number | null {
+  if (!dateStr) return null;
+  let d: Date | null = null;
+
+  // ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) d = new Date(dateStr);
+  // BR
+  if (!d && /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const [dd, mm, yyyy] = dateStr.split('/').map(Number);
+    d = new Date(yyyy, mm - 1, dd);
+  }
+  if (!d || Number.isNaN(d.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age >= 0 && age <= 120 ? age : null;
+}
 
 // Hard skills: Básico/Intermediário/Avançado ou escala 0..5 → %
 function skillLevelToPercent(nivel?: string): number {
   if (!nivel) return 0;
   const t = nivel.trim().toLowerCase();
 
-  // Português comum
   if (t.startsWith('av')) return 100; // Avançado
   if (t.startsWith('in')) return 66; // Intermediário
   if (t.startsWith('bá') || t.startsWith('ba')) return 33; // Básico
@@ -39,10 +59,13 @@ function skillLevelToPercent(nivel?: string): number {
   return 0;
 }
 
-// Idiomas: CEFR (A1..C2) ou PT → %
+// Idiomas: CEFR/PT → % (Nativo/Fluente/C2 = 100%)
 function langLevelToPercent(nivel?: string): number {
   if (!nivel) return 0;
-  const n = displayLangLevel(nivel); // normaliza para "A1..C2" ou "Básico/Intermediário/Avançado"
+
+  // normaliza para algo legível (A1..C2 / Básico..Avançado / Nativo)
+  const disp = displayLangLevel(nivel);
+
   const map: Record<string, number> = {
     A1: 15,
     A2: 30,
@@ -53,9 +76,19 @@ function langLevelToPercent(nivel?: string): number {
     Básico: 30,
     Intermediário: 60,
     Avançado: 90,
+    Fluente: 100,
+    Nativo: 100,
   };
-  return map[n] ?? 0;
+
+  // tentativas extras (ex.: "native", "proficiente")
+  const low = disp.toLowerCase();
+  if (/(nativo|native)/.test(low)) return 100;
+  if (/(fluente|proficiente|proficient)/.test(low)) return 100;
+
+  return map[disp] ?? 0;
 }
+
+/* ========================= Componente ========================= */
 
 export default function ModernClean() {
   const { state } = useResume();
@@ -64,10 +97,16 @@ export default function ModernClean() {
 
   const objetivo = dados?.objetivo?.trim();
 
+  const age = computeAge(dados?.dataNascimento);
+  const localPieces: string[] = [];
+  if (dados?.cidadePais?.trim()) localPieces.push(dados.cidadePais.trim());
+  if (age != null) localPieces.push(`${age} anos`);
+  const localText = localPieces.join(' · ');
+
   const contactHasAny =
     !!dados?.email?.trim() ||
     !!dados?.telefone?.trim() ||
-    !!dados?.cidadePais?.trim() ||
+    !!localText ||
     !!dados?.linkedin?.trim() ||
     !!dados?.github?.trim() ||
     !!dados?.site?.trim();
@@ -82,7 +121,7 @@ export default function ModernClean() {
       lang="pt-BR"
     >
       <div id="cv-content" className="content modern-grid">
-        {/* ====== HEADER (topo, ocupa largura total) ====== */}
+        {/* ====== HEADER (largura total) ====== */}
         <header className="modern-header keep-with-next no-split">
           <div className="modern-header-inner">
             <div className="modern-head-main">
@@ -110,12 +149,14 @@ export default function ModernClean() {
         {/* ====== COLUNA ESQUERDA ====== */}
         <aside className="modern-col left no-split">
           {/* Contatos */}
+          {/* Contatos */}
           {contactHasAny && (
             <section className="modern-section">
               <h3 className="modern-sec">Contato</h3>
               <dl className="modern-contact">
+                {/* E-mail — valor embaixo do rótulo */}
                 {dados?.email?.trim() && (
-                  <div className="row">
+                  <div className="row stack">
                     <dt>E-mail</dt>
                     <dd>
                       <a
@@ -127,27 +168,35 @@ export default function ModernClean() {
                     </dd>
                   </div>
                 )}
-                {dados?.telefone?.trim() && (
-                  <div className="row">
-                    <dt>Telefone</dt>
-                    <dd>
-                      <a
-                        className="link-plain"
-                        href={`tel:${dados.telefone.replace(/[^\d+]/g, '')}`}
-                      >
-                        {dados.telefone}
-                      </a>
-                    </dd>
+
+                {/* Telefone + Local — dois blocos lado a lado */}
+                {(dados?.telefone?.trim() || dados?.cidadePais?.trim()) && (
+                  <div className="row two">
+                    {dados?.telefone?.trim() && (
+                      <div className="pair">
+                        <dt>Telefone</dt>
+                        <dd>
+                          <a
+                            className="link-plain"
+                            href={`tel:${dados.telefone.replace(/[^\d+]/g, '')}`}
+                          >
+                            {dados.telefone}
+                          </a>
+                        </dd>
+                      </div>
+                    )}
+                    {dados?.cidadePais?.trim() && (
+                      <div className="pair">
+                        <dt>Local</dt>
+                        <dd>{dados.cidadePais.trim()}</dd>
+                      </div>
+                    )}
                   </div>
                 )}
-                {dados?.cidadePais?.trim() && (
-                  <div className="row">
-                    <dt>Local</dt>
-                    <dd>{dados.cidadePais.trim()}</dd>
-                  </div>
-                )}
+
+                {/* LinkedIn — valor embaixo do rótulo */}
                 {dados?.linkedin?.trim() && (
-                  <div className="row">
+                  <div className="row stack">
                     <dt>LinkedIn</dt>
                     <dd>
                       <a
@@ -161,8 +210,10 @@ export default function ModernClean() {
                     </dd>
                   </div>
                 )}
+
+                {/* GitHub — valor embaixo do rótulo */}
                 {dados?.github?.trim() && (
-                  <div className="row">
+                  <div className="row stack">
                     <dt>GitHub</dt>
                     <dd>
                       <a
@@ -176,8 +227,10 @@ export default function ModernClean() {
                     </dd>
                   </div>
                 )}
+
+                {/* Site — valor embaixo do rótulo */}
                 {dados?.site?.trim() && (
-                  <div className="row">
+                  <div className="row stack">
                     <dt>Site</dt>
                     <dd>
                       <a
@@ -271,9 +324,7 @@ export default function ModernClean() {
                     return (a?.idioma || '').localeCompare(
                       b?.idioma || '',
                       'pt',
-                      {
-                        sensitivity: 'base',
-                      },
+                      { sensitivity: 'base' },
                     );
                   })
                   .map((l: any, i: number) => {

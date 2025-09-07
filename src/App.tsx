@@ -1,32 +1,41 @@
-// src/App.tsx
 // ============================================================================
 // Wizard do currículo com layout responsivo e preview “sticky” no desktop.
-// Etapa 6 usa o painel <Review />; etapas 0..4 mostram o <ResumePreview> à direita.
-// Dependência de PDF: servidor (Puppeteer) + impressão nativa (print.css).
+// Etapa 6 usa o painel <Review /> (centralizado) e permite trocar o template.
+// OBS: os templates já rendem #cv-page; o ResumePreview não deve criar outro.
 // ============================================================================
 
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { ResumeProvider, useResume } from './state/ResumeContext';
+
 import PersonalForm from './components/PersonalForm';
 import ObjectiveForm from './components/ObjectiveForm';
 import SkillsForm from './components/SkillsForm';
 import ExperienceForm from './components/ExperienceForm';
-import CertificationsForm from './components/CertificationsForm'; // ✅ caminho corrigido
+import CertificationsForm from './components/CertificationsForm';
 import LanguagesForm from './components/LanguagesForm';
+
 import Stepper from './components/Stepper';
 import WizardNav from './components/WizardNav';
+
+// Painel de revisão (com troca de template e geração de PDF)
 import Review from './components/Review';
 
-// ✅ componente default + tipo via "import type"
-import ResumePreview from './components/preview/ResumePreview';
-import type { ResumeTemplateId } from './components/preview/ResumePreview';
+// Tipos do preview (inclui o union 'abnt' | 'modern')
+import ResumePreview, {
+  type ResumeTemplateId,
+} from './components/preview/ResumePreview';
 
-// 🔗 Botão “Baixar PDF (servidor)” — chama /api/print/pdf (Puppeteer)
-import { downloadServerPDF } from './lib/serverPrint';
+// Validadores centralizados
+import {
+  isNonEmpty,
+  emailError,
+  phoneError,
+  cityStateError,
+  birthDateError,
+  resumoError,
+} from './lib/validators';
 
-// ---------------------------------------------------------------------------
-// Validações mínimas inline (pode mover para src/state/validators.ts)
-// ---------------------------------------------------------------------------
+// ---------- Tipagem util baseada em useResume ----------
 type AnyState =
   ReturnType<typeof useResume> extends infer R
     ? R extends { state: infer S }
@@ -34,36 +43,58 @@ type AnyState =
       : never
     : never;
 
-function isNonEmpty(str: unknown) {
-  return typeof str === 'string' && str.trim().length > 0;
-}
-function validateEmail(email?: string) {
-  if (!email) return 'Informe um e-mail.';
-  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  return ok ? undefined : 'E-mail inválido.';
-}
+// ---------- Validação do passo "Dados pessoais" ----------
 function validatePersonal(
   dados: AnyState extends { dados: infer D } ? D : any,
 ) {
   const errors: Record<string, string> = {};
+
   if (!isNonEmpty(dados?.nome)) errors.nome = 'Informe seu nome completo.';
-  const e = validateEmail(dados?.email);
-  if (e) errors.email = e;
-  if (!isNonEmpty(dados?.telefone)) errors.telefone = 'Informe um telefone.';
-  if (!isNonEmpty(dados?.cidadePais))
-    errors.cidadePais = 'Informe cidade/país.';
+  const e1 = emailError(dados?.email);
+  if (e1) errors.email = e1;
+  const e2 = phoneError(dados?.telefone);
+  if (e2) errors.telefone = e2;
+  const e3 = cityStateError(dados?.cidadePais);
+  if (e3) errors.cidadePais = e3;
+  const e4 = birthDateError(dados?.dataNascimento, 15, 70);
+  if (e4) errors.dataNascimento = e4;
+  const e5 = resumoError(dados?.resumo, 180, 600); // mínimo 180
+  if (e5) errors.resumo = e5;
+
   return errors;
 }
+
+// ---------- Regras para "Objetivo & Formação" ----------
 function canProceedObjectiveAndEducation(state: AnyState) {
   const hasObjetivo = isNonEmpty((state as any)?.dados?.objetivo);
   const edus = (state as any)?.formacoes ?? [];
-  const hasEdu = Array.isArray(edus) && edus.length >= 1;
-  return hasObjetivo && hasEdu;
+  return hasObjetivo && Array.isArray(edus) && edus.length >= 1;
 }
 
-// ---------------------------------------------------------------------------
-// Breakpoint helper
-// ---------------------------------------------------------------------------
+// ---------- Validação de EXPERIÊNCIA mínima (1 válida) ----------
+const RE_XP_PERIOD =
+  /^(0[1-9]|1[0-2])\/(\d{4})\s-\s((0[1-9]|1[0-2])\/(\d{4})|Atual)$/;
+
+function validateExperienceItem(e: any): string[] {
+  const msgs: string[] = [];
+  if (!e?.empresa?.trim()) msgs.push('Empresa: informe a empresa.');
+  if (!e?.cargo?.trim()) msgs.push('Cargo: informe o cargo.');
+  if (!e?.periodo?.trim() || !RE_XP_PERIOD.test(e.periodo)) {
+    msgs.push('Período: use "MM/AAAA - MM/AAAA" ou "MM/AAAA - Atual".');
+  }
+  return msgs;
+}
+function listExperienceIssues(state: AnyState) {
+  const xs = (state as any)?.experiencias ?? [];
+  const issues: { idx: number; msgs: string[] }[] = [];
+  xs.forEach((e: any, i: number) => {
+    const msgs = validateExperienceItem(e);
+    if (msgs.length) issues.push({ idx: i, msgs });
+  });
+  return issues;
+}
+
+// ---------- Breakpoint helper ----------
 function useMediaQuery(query: string) {
   const [match, setMatch] = useState(false);
   useEffect(() => {
@@ -80,12 +111,12 @@ function Wizard() {
   const { state } = useResume();
   const [step, setStep] = useState(0);
 
-  // ✅ template do currículo (conforme ResumePreview exporta)
-  const [template, setTemplate] = useState<ResumeTemplateId>('classico');
+  // IDs válidos definidos por ResumeTemplateId: 'abnt' | 'modern'
+  const [template, setTemplate] = useState<ResumeTemplateId>('abnt');
 
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
-  // ---------------- Passos e validações ----------------
+  // ---------- Passos & validações ----------
   const steps = useMemo(
     () => [
       { id: 1, label: 'Dados pessoais' },
@@ -106,16 +137,20 @@ function Wizard() {
 
   const fieldLabels: Record<string, string> = {
     nome: 'Nome completo',
-    cidadePais: 'Cidade / País',
+    cidadePais: 'Cidade - Estado',
     dataNascimento: 'Data de nascimento',
-    email: 'Email',
-    telefone: 'Telefone (DDD/DDI)',
+    email: 'E-mail',
+    telefone: 'Telefone (DDI/DDD)',
     resumo: 'Resumo profissional',
     objetivo: 'Objetivo',
     site: 'Portfólio / Site',
     github: 'GitHub',
     linkedin: 'LinkedIn',
   };
+
+  const expIssues = useMemo(() => listExperienceIssues(state as any), [state]);
+  const hasAtLeastOneExp = (state.experiencias ?? []).length >= 1;
+  const experiencesValid = hasAtLeastOneExp && expIssues.length === 0;
 
   const canNext = useMemo(() => {
     switch (step) {
@@ -126,11 +161,11 @@ function Wizard() {
       case 2:
         return state.skills.length >= 1;
       case 3:
-        return state.experiencias.length >= 1;
+        return experiencesValid;
       default:
         return true;
     }
-  }, [step, state, personalHasErrors]);
+  }, [step, state, personalHasErrors, experiencesValid]);
 
   const goNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -143,6 +178,22 @@ function Wizard() {
       alert(`Por favor, corrija:\n${list}`);
       return;
     }
+
+    if (step === 3 && !experiencesValid) {
+      const lines = expIssues
+        .map(
+          (it) =>
+            `• Experiência #${it.idx + 1}:\n  - ${it.msgs.join('\n  - ')}`,
+        )
+        .join('\n');
+      alert(
+        hasAtLeastOneExp
+          ? `Corrija os pontos abaixo antes de continuar:\n${lines}`
+          : 'Adicione pelo menos uma experiência válida para continuar.',
+      );
+      return;
+    }
+
     if (!canNext) {
       alert(
         step === 1
@@ -151,6 +202,7 @@ function Wizard() {
       );
       return;
     }
+
     if (step < steps.length - 1) goNext();
     else {
       console.log('Currículo finalizado:', state);
@@ -158,7 +210,7 @@ function Wizard() {
     }
   };
 
-  // ---------------- Preview sticky (desktop) com auto-fit + zoom ------------
+  // ---------- Preview sticky (desktop) com auto-fit + zoom ----------
   const [zoom, setZoom] = useState(1);
   const [autoFit, setAutoFit] = useState(true);
   const [fitScale, setFitScale] = useState(1);
@@ -190,25 +242,54 @@ function Wizard() {
 
   const effectiveZoom = isDesktop ? (autoFit ? fitScale : zoom) : 1;
 
-  // ---------------- Etapa 6: painel de revisão central -----------------------
+  // Nome do arquivo do PDF (limpo)
+  const fileName =
+    (state?.dados?.nome
+      ? `Curriculo-${state.dados.nome}`.replace(/[\\/:*?"<>|]+/g, '_')
+      : 'Curriculo') + '';
+
+  // ---------- Etapa 6: revisão (com preview central) ----------
   if (step === 5) {
     return (
       <main className="page-container px-4 md:px-6 py-5">
         <Stepper steps={steps} current={step} />
 
+        {/* Barra com troca de template e botões de PDF */}
         <div className="mt-6 flex justify-center">
           <div className="w-full max-w-[980px]">
-            {/* Escolha de template e revisão final */}
-            <Review template={template} onTemplateChange={setTemplate} />
+            <Review
+              template={template}
+              nomeArquivo={fileName}
+              onTemplateChange={setTemplate}
+            />
+          </div>
+        </div>
+
+        {/* ⬇ Preview centralizado (mesmo usado na coluna direita) */}
+        <div className="mt-6 flex justify-center">
+          <div className="w-full max-w-[980px]">
+            <div className="preview-card">
+              <div className="preview-body">
+                <div
+                  className="preview-canvas"
+                  style={{ transform: 'scale(1)' }}
+                >
+                  {/* O template renderiza #cv-page; não crie outro wrapper. */}
+                  <ResumePreview template={template} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="mt-8">
           <WizardNav
-            canBack
-            canNext={false}
+            current={step}
+            total={steps.length}
+            canBack={true}
+            canNext={true}
             onBack={() => setStep(4)}
-            onNext={() => {}}
+            onNext={handleNext}
             nextLabel="Concluir"
           />
         </div>
@@ -216,7 +297,7 @@ function Wizard() {
     );
   }
 
-  // ---------------- Demais etapas (0..4): form + preview sticky --------------
+  // ---------- Demais etapas (0..4): formulário + preview sticky ----------
   return (
     <main className="page-container px-4 md:px-6 py-5">
       <div className="layout-2col">
@@ -224,6 +305,7 @@ function Wizard() {
         <section>
           <Stepper steps={steps} current={step} />
 
+          {/* Banner de erros — etapa 0 */}
           {step === 0 && personalHasErrors && (
             <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               <strong>Corrija os campos abaixo:</strong>
@@ -235,6 +317,33 @@ function Wizard() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Banner de erros — etapa 3 */}
+          {step === 3 && (!hasAtLeastOneExp || expIssues.length > 0) && (
+            <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <strong>Corrija as experiências abaixo:</strong>
+              {!hasAtLeastOneExp ? (
+                <p className="mt-2">
+                  Adicione pelo menos uma experiência válida.
+                </p>
+              ) : (
+                <ul className="mt-2 list-disc pl-5 space-y-1">
+                  {expIssues.map((it) => (
+                    <li key={it.idx}>
+                      <span className="font-medium">
+                        Experiência #{it.idx + 1}:
+                      </span>
+                      <ul className="list-disc pl-5">
+                        {it.msgs.map((m, k) => (
+                          <li key={k}>{m}</li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -253,6 +362,8 @@ function Wizard() {
 
           <div className="mt-8">
             <WizardNav
+              current={step}
+              total={steps.length}
               canBack={step > 0}
               canNext={canNext && step < steps.length - 1}
               onBack={back}
@@ -294,22 +405,19 @@ function Wizard() {
                 >
                   Ajustar
                 </button>
-
-                {/* 🖨️ Impressão nativa (usa print.css) */}
                 <button
                   className="btn btn-outline"
                   onClick={() => window.print()}
                 >
                   Imprimir
                 </button>
-
-                {/* 📄 PDF do servidor (Puppeteer + @media print) */}
+                {/* PDF opcional; a etapa Revisão já oferece mais controle */}
                 <button
                   className="btn btn-primary"
-                  onClick={() => downloadServerPDF()}
-                  title="Gera PDF com texto selecionável no servidor"
+                  onClick={() => window.print()}
+                  title="Use a etapa Revisão para gerar PDF com mais controle"
                 >
-                  Baixar PDF (servidor)
+                  Gerar PDF
                 </button>
               </div>
 
@@ -318,7 +426,7 @@ function Wizard() {
                   className="preview-canvas"
                   style={{ transform: `scale(${effectiveZoom})` }}
                 >
-                  {/* Usa o mesmo modelo escolhido */}
+                  {/* O template renderiza #cv-page; não criar outro wrapper. */}
                   <ResumePreview template={template} />
                 </div>
               </div>
@@ -330,7 +438,7 @@ function Wizard() {
   );
 }
 
-// Provider + guard de hotkeys
+// ---------- Provider + guard de hotkeys ----------
 export default function App() {
   useEffect(() => {
     const isEditable = (t: EventTarget | null) =>

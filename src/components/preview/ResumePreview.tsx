@@ -1,18 +1,23 @@
 // src/components/preview/ResumePreview.tsx
+import React from 'react';
+
+// ajuste o import conforme seus caminhos/barrel:
 import ClassicABNT from './templates/ClassicABNT';
 import ModernClean from './templates/ModernClean';
 
-export type ResumeTemplateId = 'classico' | 'modern';
+export type ResumeTemplateId = 'abnt' | 'modern';
 
-type Props = { template: ResumeTemplateId };
+const TEMPLATES = {
+  abnt: ClassicABNT,
+  modern: ModernClean,
+} as const;
 
-export default function ResumePreview({ template }: Props) {
-  switch (template) {
-    case 'classico':
-      return <ClassicABNT />; // ⚠️ o template já renderiza <div id="cv-page" class="page abnt">
-    case 'modern':
-      return <ModernClean />; // ⚠️ o template já renderiza <div id="cv-page" class="page modern">
-    default:
-      return <ClassicABNT />;
-  }
+export default function ResumePreview({
+  template,
+}: {
+  template: ResumeTemplateId;
+}) {
+  const Comp = TEMPLATES[template] ?? ClassicABNT; // fallback
+  // ⚠️ NÃO renderize wrappers extras aqui; cada template já cria #cv-page/#cv-content
+  return <Comp />;
 }

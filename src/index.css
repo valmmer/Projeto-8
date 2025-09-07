@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "./styles/print.css";
+/* Modern fica isolado no próprio arquivo */
+@import "./styles/modern.css";
 
 /* ====================== VARIANTES / DARK ====================== */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -122,31 +124,18 @@
 
 /* remove "mailto:/tel:/URL" que alguns navegadores imprimem e que o html2canvas captura */
 .page a[href]::after,
-.page a[href]::before {
-  content: none !important;
-}
+.page a[href]::before { content: none !important; }
 
 /* ===== Quebras de página (screen e print) ===== */
-
 /* Mantém o PRÓXIMO bloco junto, mas permite quebrar dentro da section */
-.keep-with-next {
-  break-after: avoid;
-  page-break-after: avoid;
-}
+.keep-with-next { break-after: avoid; page-break-after: avoid; }
 
 /* Use só em blocos que não podem partir ao meio (cada .entry, por ex.) */
 .no-split {
-  break-inside: avoid;
-  page-break-inside: avoid;
-  -webkit-column-break-inside: avoid;
-  -webkit-region-break-inside: avoid;
+  break-inside: avoid; page-break-inside: avoid;
+  -webkit-column-break-inside: avoid; -webkit-region-break-inside: avoid;
 }
 
-/* Não deixe o título sozinho no fim da página */
-.page.abnt h3.sec + * {
-  break-before: avoid;
-  page-break-before: avoid;
-}
-
-/* (opcional) título com margens um pouco menores ajuda a caber mais conteúdo */
+/* ===== ABNT (alguns ajustes leves) ===== */
+.page.abnt h3.sec + * { break-before: avoid; page-break-before: avoid; }
 .page.abnt h3.sec { margin: 10pt 0 4pt; }

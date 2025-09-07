@@ -1,13 +1,20 @@
+// src/components/education/EducationSection.tsx
+// -----------------------------------------------------------------------------
+// Lista de formações: adiciona/remove/edita vários <EducationItem />
+// • Validação atualizada: aceita YYYY, "Concluído em YYYY", "Término em YYYY",
+//   e também o legado "MM/AAAA - MM/AAAA" | "MM/AAAA - Atual"
+// -----------------------------------------------------------------------------
+
 import React from 'react';
 import { v4 as uuid } from 'uuid';
 import EducationItem from '../education/EducationItem';
-// ⬇️ se este arquivo está em src/components/education e o types.ts está em src/, use "../types"
 import type { Education } from '../../types';
-// (Se o seu types.ts estiver lado a lado de EducationSection.tsx, troque para "../types" -> "./types")
+
+// ✅ Usa os validadores novos (edite o caminho se necessário)
+import { isValidEducationPeriod, EDU_PERIOD_HELP } from '../../lib/validators';
 
 // --------------------------- Validação ---------------------------
-// Garante que cada item tenha instituição, curso e período no formato aceito:
-// "MM/YYYY - MM/YYYY" ou "MM/YYYY - Atual"
+// Garante que cada item tenha instituição, curso e período em formato aceito.
 export function validateEducationItem(
   e: Education,
 ): Partial<Record<keyof Education, string>> {
@@ -16,16 +23,9 @@ export function validateEducationItem(
   if (!e.instituicao?.trim()) errs.instituicao = 'Informe a instituição';
   if (!e.curso?.trim()) errs.curso = 'Informe o curso';
 
-  if (!e.periodo?.trim()) {
-    errs.periodo = 'Informe o período';
-  } else {
-    const ok =
-      /^(0[1-9]|1[0-2])\/(\d{4})\s-\s((0[1-9]|1[0-2])\/(\d{4})|Atual)$/.test(
-        e.periodo,
-      );
-    if (!ok)
-      errs.periodo =
-        'Formato inválido (use MM/AAAA - MM/AAAA ou MM/AAAA - Atual)';
+  // ⬇️ Agora aceita os novos formatos de período
+  if (!e.periodo?.trim() || !isValidEducationPeriod(e.periodo)) {
+    errs.periodo = EDU_PERIOD_HELP;
   }
 
   return errs;
@@ -47,7 +47,7 @@ export default function EducationSection({
       id: uuid(),
       instituicao: '',
       curso: '',
-      periodo: '',
+      periodo: '', // será preenchido no card (Concluído/Término em YYYY, ou YYYY)
     };
     onChange([...list, novo]);
   };
@@ -81,7 +81,6 @@ export default function EducationSection({
           + Adicionar
         </button>
       </div>
-
       {/* Estado vazio elegante */}
       {list.length === 0 && (
         <div className="rounded-xl border bg-white/60 p-4 text-sm text-slate-600">
@@ -95,7 +94,6 @@ export default function EducationSection({
           </button>
         </div>
       )}
-
       {/* Lista de cards */}
       <div className="space-y-3">
         {list.map((e, i) => (
@@ -108,7 +106,8 @@ export default function EducationSection({
             errors={errors(e)}
           />
         ))}
-      </div>
+      </div>{' '}
+      {/* <- mostra mensagens novas */}
     </section>
   );
 }
