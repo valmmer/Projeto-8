@@ -1,12 +1,13 @@
 // src/components/education/EducationItem.tsx
 // -----------------------------------------------------------------------------
 // Cartão de formação (com checkbox "Ensino Médio")
-// • Checkbox "Ensino Médio": quando marcado, o campo Curso vira apenas informativo
-//   e salvamos "Ensino Médio (Completo|Incompleto)".
+// • Suporta ANOS FUTUROS (padrão: atual + 10) — configurável via prop futureYears
+// • Se o usuário escolher um ANO FUTURO com status "Completo", forçamos "Incompleto"
+//   para evitar inconsistências (e atualizamos o rótulo do "Ensino Médio").
 // • Situação: Completo | Incompleto
 //   - Completo   → "Concluído em YYYY"
 //   - Incompleto → "Término em YYYY"
-// • Instituição* sempre obrigatória
+// • Instituição* obrigatória
 // -----------------------------------------------------------------------------
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -18,6 +19,10 @@ type Props = {
   onChange: (next: Education) => void;
   onRemove: (id: string) => void;
   errors?: Partial<Record<keyof Education, string>>;
+  /** Quantos anos à frente do atual exibir no seletor. Default: 10 */
+  futureYears?: number;
+  /** Quantos anos para trás a partir do atual. Default: 60 */
+  pastYears?: number;
 };
 
 // Extrai o primeiro ano (YYYY) do texto
@@ -37,14 +42,21 @@ export default function EducationItem({
   onChange,
   onRemove,
   errors = {},
+  futureYears = 5,
+  pastYears = 60,
 }: Props) {
   const set = (patch: Partial<Education>) => onChange({ ...item, ...patch });
 
-  // anos (atual → atual-60)
+  const nowYear = new Date().getFullYear();
+  const yMax = nowYear + Math.max(0, futureYears);
+  const yMin = nowYear - Math.max(0, pastYears);
+
+  // anos descendentes: yMax → yMin
   const years = useMemo(() => {
-    const now = new Date().getFullYear();
-    return Array.from({ length: 61 }, (_, i) => String(now - i));
-  }, []);
+    const out: string[] = [];
+    for (let y = yMax; y >= yMin; y--) out.push(String(y));
+    return out;
+  }, [yMax, yMin]);
 
   // é Ensino Médio se o curso começar com "Ensino Médio"
   const isMedio = /^Ensino Médio/i.test(item.curso || '');
@@ -58,37 +70,50 @@ export default function EducationItem({
     derivedStatus,
   );
 
-  // sempre que o período tiver ano, sincroniza o pendingStatus com o derivado
+  // Sempre que o período tiver ano, sincroniza o pendingStatus com o derivado
   useEffect(() => {
     if (year) setPendingStatus(derivedStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.periodo]);
 
-  // alterna o checkbox "Ensino Médio"
+  // Rótulo de status efetivo para esta renderização
+  const statusNow: 'Completo' | 'Incompleto' = year
+    ? derivedStatus
+    : pendingStatus;
+
+  // Atualiza o texto do curso quando for Ensino Médio
+  function syncMedioLabel(status: 'Completo' | 'Incompleto') {
+    if (isMedio) set({ curso: `Ensino Médio (${status})` });
+  }
+
+  // Alterna o checkbox "Ensino Médio"
   function toggleMedio(checked: boolean) {
     if (checked) {
-      // vira Ensino Médio → montamos o texto do curso com o status atual
-      set({ curso: `Ensino Médio (${pendingStatus})` });
+      syncMedioLabel(statusNow);
     } else {
       // volta a ser Superior/Curso livre → limpa para o usuário digitar
       set({ curso: '' });
     }
   }
 
-  // muda Situação
+  // Muda Situação
   function handleStatusChange(next: 'Completo' | 'Incompleto') {
-    setPendingStatus(next);
+    // Se já tem ano FUTURO e usuário escolhe "Completo", força "Incompleto"
+    const nextFinal =
+      next === 'Completo' && year && Number(year) > nowYear
+        ? 'Incompleto'
+        : next;
 
-    // atualiza o "curso" se for Ensino Médio
-    if (isMedio) {
-      set({ curso: `Ensino Médio (${next})` });
-    }
+    setPendingStatus(nextFinal);
+    syncMedioLabel(nextFinal);
 
-    // se já tiver ano, reescreve o período com o novo rótulo
+    // Se já tiver ano, reescreve o período com o novo rótulo
     if (year) {
       set({
         periodo:
-          next === 'Completo' ? `Concluído em ${year}` : `Término em ${year}`,
+          nextFinal === 'Completo'
+            ? `Concluído em ${year}`
+            : `Término em ${year}`,
       });
     } else {
       // sem ano ainda → mantém período vazio
@@ -96,16 +121,28 @@ export default function EducationItem({
     }
   }
 
-  // muda Ano
+  // Muda Ano
   function handleYearChange(nextYear: string) {
     if (!nextYear) {
       set({ periodo: '' });
       return;
     }
-    const statusNow = (year ? derivedStatus : pendingStatus) || 'Completo';
+
+    // Se o ano é FUTURO e o status atual é "Completo", corrige para "Incompleto"
+    const isFuture = Number(nextYear) > nowYear;
+    const normalizedStatus =
+      statusNow === 'Completo' && isFuture ? 'Incompleto' : statusNow;
+
+    // Mantém o pendingStatus coerente
+    if (!year && normalizedStatus !== pendingStatus) {
+      setPendingStatus(normalizedStatus);
+    }
+    // Atualiza rótulo do Médio, se aplicável
+    syncMedioLabel(normalizedStatus);
+
     set({
       periodo:
-        statusNow === 'Completo'
+        normalizedStatus === 'Completo'
           ? `Concluído em ${nextYear}`
           : `Término em ${nextYear}`,
     });
@@ -179,7 +216,7 @@ export default function EducationItem({
 
           {isMedio ? (
             <div className="input bg-slate-50 text-slate-600">
-              {`Ensino Médio (${(year ? derivedStatus : pendingStatus) || 'Completo'})`}
+              {`Ensino Médio (${statusNow})`}
             </div>
           ) : (
             <input
@@ -203,7 +240,7 @@ export default function EducationItem({
           <label className="label">Situação</label>
           <select
             className="input"
-            value={year ? derivedStatus : pendingStatus}
+            value={statusNow}
             onChange={(e) =>
               handleStatusChange(e.target.value as 'Completo' | 'Incompleto')
             }
@@ -219,7 +256,7 @@ export default function EducationItem({
         {/* Ano */}
         <div>
           <label className="label">
-            {(year ? derivedStatus : pendingStatus) === 'Completo'
+            {statusNow === 'Completo'
               ? 'Ano de formação *'
               : 'Ano de término *'}
           </label>
@@ -239,6 +276,12 @@ export default function EducationItem({
           </select>
           {errors.periodo && (
             <p className="help text-red-600">{errors.periodo}</p>
+          )}
+          {/* Dica opcional quando ano futuro + status completo não combinam */}
+          {year && Number(year) > nowYear && statusNow === 'Completo' && (
+            <p className="help text-amber-600">
+              Ano no futuro selecionado — ajustando situação para “Incompleto”.
+            </p>
           )}
         </div>
       </div>
