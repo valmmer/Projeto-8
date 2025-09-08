@@ -7,7 +7,6 @@
 // • Atualização em-lugar usando dispatch({ type: 'HYDRATE', payload })
 // -----------------------------------------------------------------------------
 
-import React from 'react';
 import { useResume, rid } from '../state/ResumeContext';
 import type { Experience, ResumeState } from '../types';
 import ExperienceItem from './experience/ExperienceItem';

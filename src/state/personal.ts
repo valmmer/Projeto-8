@@ -26,15 +26,15 @@ const isGithub = (u: string) => /(^|\.)github\.com\/?/i.test(u);
 export type PersonalErrors = Partial<Record<keyof PersonalData, string>>;
 
 export type ValidatePersonalOpts = {
-  maxResumo?: number;               // default 600
-  minResumo?: number;               // default 180  ← adicionamos esta opção
-  maxObjetivo?: number;             // default 160
-  minAge?: number;                  // default 15 (anos)
-  maxAge?: number;                  // default 70 (anos)
-  requireResumo?: boolean;          // default true
-  requireObjetivo?: boolean;        // default false
-  requireCidadePais?: boolean;      // default true
-  requireDataNascimento?: boolean;  // default true
+  maxResumo?: number; // default 600
+  minResumo?: number; // default 180  ← adicionamos esta opção
+  maxObjetivo?: number; // default 160
+  minAge?: number; // default 15 (anos)
+  maxAge?: number; // default 70 (anos)
+  requireResumo?: boolean; // default true
+  requireObjetivo?: boolean; // default false
+  requireCidadePais?: boolean; // default true
+  requireDataNascimento?: boolean; // default true
 };
 
 // ---------- Formação Acadêmica ----------
@@ -51,7 +51,7 @@ export type EducationErrors = {
 
 export type ValidateEducationOpts = {
   requireAtLeastOne?: boolean; // default true
-  allowSingleYear?: boolean;   // default false (aceitar "2017" isolado)
+  allowSingleYear?: boolean; // default false (aceitar "2017" isolado)
 };
 
 // ===========================================================
@@ -152,7 +152,10 @@ export function validatePersonal(
   }
 
   // Objetivo (tamanho máximo)
-  if (typeof dados.objetivo === 'string' && dados.objetivo.length > maxObjetivo) {
+  if (
+    typeof dados.objetivo === 'string' &&
+    dados.objetivo.length > maxObjetivo
+  ) {
     errors.objetivo = `Máx. ${maxObjetivo} caracteres.`;
   }
 
@@ -166,7 +169,8 @@ export function validatePersonal(
   // Data de nascimento: obrigatória + ISO yyyy-mm-dd + faixa 15–70 anos
   const hoje = new Date();
   if (!dados.dataNascimento?.trim()) {
-    if (requireDataNascimento) errors.dataNascimento = 'Informe sua data de nascimento.';
+    if (requireDataNascimento)
+      errors.dataNascimento = 'Informe sua data de nascimento.';
   } else if (!isoDateRegex.test(dados.dataNascimento)) {
     errors.dataNascimento = 'Use formato yyyy-mm-dd.';
   } else {
@@ -190,14 +194,6 @@ export function validatePersonal(
   }
 
   return errors;
-}
-
-// ===== Helpers de data (se precisar no futuro) =====
-function diffYears(a: Date, b: Date) {
-  let years = b.getFullYear() - a.getFullYear();
-  const m = b.getMonth() - a.getMonth();
-  if (m < 0 || (m === 0 && b.getDate() < a.getDate())) years--;
-  return years;
 }
 
 // ===========================================================
@@ -234,7 +230,8 @@ function parsePeriodo(
   const p = normalizePeriodo(periodoRaw);
 
   // MM/AAAA - MM/AAAA | MM/AAAA - Atual
-  const monthYearRange = /^\s*(\d{2})\/(\d{4})\s*-\s*(?:(\d{2})\/(\d{4})|Atual)\s*$/i;
+  const monthYearRange =
+    /^\s*(\d{2})\/(\d{4})\s*-\s*(?:(\d{2})\/(\d{4})|Atual)\s*$/i;
   // Opcional: "YYYY" isolado (para migração/legado)
   const singleYear = /^\s*(\d{4})\s*$/;
 
@@ -259,7 +256,12 @@ function parsePeriodo(
   // Aceita "YYYY" isolado somente se explicitamente permitido:
   if (allowSingleYear && singleYear.test(p)) {
     const y = Number(p.match(singleYear)![1]);
-    return { ok: true, start: y * 100 + 1, end: y * 100 + 12, openEnded: false };
+    return {
+      ok: true,
+      start: y * 100 + 1,
+      end: y * 100 + 12,
+      openEnded: false,
+    };
   }
 
   return { ok: false };
@@ -291,7 +293,8 @@ export function validateEducationItem(
 
   const parsed = parsePeriodo(raw, { allowSingleYear });
   if (!parsed.ok) {
-    errs.periodo = 'Período inválido. Use MM/AAAA - MM/AAAA ou MM/AAAA - Atual.';
+    errs.periodo =
+      'Período inválido. Use MM/AAAA - MM/AAAA ou MM/AAAA - Atual.';
     return errs;
   }
 
@@ -331,7 +334,10 @@ export function validateEducations(
 // ===========================================================
 
 /** Retorna true se não houver nenhum erro nos dados pessoais (com flags) */
-export function isPersonalValid(dados: PersonalData, opts?: ValidatePersonalOpts) {
+export function isPersonalValid(
+  dados: PersonalData,
+  opts?: ValidatePersonalOpts,
+) {
   return Object.keys(validatePersonal(dados, opts)).length === 0;
 }
 
@@ -346,7 +352,10 @@ export function firstPersonalError(
 }
 
 /** Passo 0: Dados Pessoais */
-export function canProceedPersonal(state: ResumeState, opts?: ValidatePersonalOpts) {
+export function canProceedPersonal(
+  state: ResumeState,
+  opts?: ValidatePersonalOpts,
+) {
   return isPersonalValid(state.dados, opts);
 }
 
@@ -371,7 +380,9 @@ export function canProceedObjectiveAndEducation(
 
   const hasEduErrors =
     !!edu.list ||
-    Object.values(edu.byId).some((it) => it.curso || it.instituicao || it.periodo);
+    Object.values(edu.byId).some(
+      (it) => it.curso || it.instituicao || it.periodo,
+    );
 
   return pOk && !hasEduErrors;
 }

@@ -18,7 +18,7 @@ import Stepper from './components/Stepper';
 import WizardNav from './components/WizardNav';
 
 // Painel de revisão (com troca de template e geração de PDF)
-import Review from './components/Review';
+import Review from './components/Review'; 
 
 // Tipos do preview (inclui o union 'abnt' | 'modern')
 import ResumePreview, {

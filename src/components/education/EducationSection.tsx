@@ -5,7 +5,6 @@
 //   e também o legado "MM/AAAA - MM/AAAA" | "MM/AAAA - Atual"
 // -----------------------------------------------------------------------------
 
-import React from 'react';
 import { v4 as uuid } from 'uuid';
 import EducationItem from '../education/EducationItem';
 import type { Education } from '../../types';

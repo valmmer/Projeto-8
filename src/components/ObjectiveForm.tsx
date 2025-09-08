@@ -12,7 +12,6 @@ import ImproveButton from './ImproveButton';
 import AIOverlay from './ui/AIOverlay';
 import EducationSection from './education/EducationSection';
 
-import type { Skill } from '../types';
 import { validatePersonal } from '../state/personal';
 
 const MAX_OBJ = 160;
@@ -264,7 +263,7 @@ export default function ObjectiveForm() {
       {/* CARD 2 — Formação Acadêmica (ligado ao contexto) */}
       <EducationSection
         value={state.formacoes || []}
-        onChange={(next) => dispatch({ type: 'SET_EDUS', payload: next })} // ✅ usa a action que já existe
+        onChange={(next) => dispatch({ type: 'SET_EDUS', payload: next })}
       />
     </section>
   );

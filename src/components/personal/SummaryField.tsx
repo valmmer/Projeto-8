@@ -5,7 +5,7 @@
 // • Mantém contador, mensagens contextuais e o hack de teclado
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ImproveButton from '../ImproveButton';
 import AIOverlay from '../ui/AIOverlay';
 

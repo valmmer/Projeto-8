@@ -69,16 +69,7 @@ export default function ClassicABNT() {
   const objetivo = dados?.objetivo?.trim();
 
   // (Compat) Linhas de contato — mantido caso precise
-  const contactLines = [
-    dados?.email?.trim() ? `E-mail: ${dados.email.trim()}` : null,
-    dados?.telefone?.trim() ? `Telefone: ${dados.telefone.trim()}` : null,
-    dados?.linkedin?.trim() ? `LinkedIn: ${dados.linkedin.trim()}` : null,
-    dados?.github?.trim() ? `GitHub: ${dados.github.trim()}` : null,
-    dados?.site?.trim() ? `Site/Portfólio: ${dados.site.trim()}` : null,
-    dados?.cidadePais?.trim()
-      ? `Cidade/Estado: ${dados.cidadePais.trim()}`
-      : null,
-  ].filter(Boolean) as string[];
+
 
   // idade calculada
   const idade = calcAge(dados?.dataNascimento);

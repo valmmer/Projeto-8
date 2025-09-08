@@ -1,5 +1,3 @@
-import React from 'react';
-
 export type Escol = 'medio' | 'superior';
 export type MedioStatus = 'Completo' | 'Incompleto';
 

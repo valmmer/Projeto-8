@@ -1,27 +1,28 @@
-// src/components/ExperienceForm.tsx
-import React from 'react';
+// src/components/EducationForm.tsx
 import { useResume } from '../state/ResumeContext';
-import ExperienceSection from './experience/ExperienceSection';
-import type { Experience } from '../types'; // ✅ usa o tipo real
+import EducationSection from './education/EducationSection';
+import type { Education } from '../types';
 
-export default function ExperienceForm() {
+export default function EducationForm() {
   const { state, dispatch } = useResume();
 
-  const experiencias: Experience[] = Array.isArray(state.experiencias)
-    ? (state.experiencias as Experience[])
-    : [];
+  // Troque a chave conforme seu estado: 'formacoes' ou 'educacoes'
+  const educations: Education[] = Array.isArray((state as any).formacoes)
+    ? ((state as any).formacoes as Education[])
+    : Array.isArray((state as any).educacoes)
+      ? ((state as any).educacoes as Education[])
+      : [];
 
   return (
     <section className="space-y-5">
       <p className="text-sm text-slate-600">
-        Adicione suas experiências profissionais. Use{' '}
-        <span className="font-medium">Cidade - Estado</span> na localidade; o
-        traço é aplicado automaticamente.
+        Adicione sua formação acadêmica. Não precisa mês; só o ano.
       </p>
 
-      <ExperienceSection
-        value={experiencias}
-        onChange={(next) => dispatch({ type: 'SET_EXPS', payload: next })}
+      <EducationSection
+        value={educations}
+        // ✅ ENVIA ARRAY de Education; não use SET_EXPS aqui
+        onChange={(next) => dispatch({ type: 'SET_EDUS', payload: next })}
       />
     </section>
   );

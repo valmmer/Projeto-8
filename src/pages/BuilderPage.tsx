@@ -1,47 +1,66 @@
 // src/pages/BuilderPage.tsx
 import { useEffect, useRef, useState } from 'react';
 import PersonalForm from '../components/PersonalForm';
-import Preview from '../components/Preview';
+import Preview from '../components/preview';
+
+const A4_WIDTH_PX = 794; // ~210mm @ 96dpi
 
 export default function BuilderPage() {
-  // zoom atual (quando autoFit=false)
+  // zoom manual (quando autoFit=false)
   const [zoom, setZoom] = useState(1);
   // quando true, o zoom é calculado automaticamente pelo espaço disponível
   const [autoFit, setAutoFit] = useState(true);
 
   // ref da área rolável onde fica o canvas do preview (preview-body)
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  // escala calculada pelo auto-fit
+  // escala calculada pelo auto-fit (apenas para referência/telemetria)
   const [fitScale, setFitScale] = useState(1);
 
-  // Calcula zoom ideal = (largura útil do body - paddings) / largura do A4 (794px)
+  // Zera qualquer zoom global (--cv-zoom) que possa existir
   useEffect(() => {
-    if (!bodyRef.current) return;
+    const prev = getComputedStyle(document.documentElement).getPropertyValue(
+      '--cv-zoom',
+    );
+    document.documentElement.style.setProperty('--cv-zoom', '1');
+    return () => {
+      if (prev) document.documentElement.style.setProperty('--cv-zoom', prev);
+      else document.documentElement.style.removeProperty('--cv-zoom');
+    };
+  }, []);
 
+  // Calcula zoom ideal = (largura útil do body) / largura do A4 (794px)
+  useEffect(() => {
     const el = bodyRef.current;
+    if (!el) return;
 
     const compute = () => {
-      const styles = getComputedStyle(el);
-      const padX =
-        parseFloat(styles.paddingLeft || '0') +
-        parseFloat(styles.paddingRight || '0');
-
-      // largura disponível pro canvas
-      const avail = el.clientWidth - padX - 8; // -8px de folga pro scrollbars/rounding
-      const scale = Math.max(0.6, Math.min(1, avail / 794)); // limita entre 0.6 e 1
+      // clientWidth JÁ inclui o padding; não subtraia novamente
+      const avail = el.clientWidth - 8; // folga p/ scrollbar/rounding
+      const raw = avail / A4_WIDTH_PX;
+      const scale = Math.max(0.5, Math.min(1, raw));
       setFitScale(scale);
-      // se estamos em autoFit, reflete no zoom visível
       if (autoFit) setZoom(scale);
     };
 
-    // chama agora e quando redimensionar
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(el);
-    window.addEventListener('orientationchange', compute);
+    const computeRAF = () => requestAnimationFrame(compute);
+    computeRAF();
+
+    // ResizeObserver com fallback
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(computeRAF);
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', computeRAF);
+    }
+
+    const onOrient = () => computeRAF();
+    window.addEventListener('orientationchange', onOrient);
+
     return () => {
-      ro.disconnect();
-      window.removeEventListener('orientationchange', compute);
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', computeRAF);
+      window.removeEventListener('orientationchange', onOrient);
     };
   }, [autoFit]);
 
@@ -66,23 +85,22 @@ export default function BuilderPage() {
             <div className="preview-toolbar">
               <label className="text-sm text-slate-600 mr-2">Zoom</label>
 
-              {/* Slider desabilitado quando autoFit está ativo */}
+              {/* Slider SEMPRE habilitado; interagir desliga o autoFit */}
               <input
                 className="preview-zoom"
                 type="range"
-                min={0.8}
+                min={0.5}
                 max={1.3}
-                step={0.05}
+                step={0.02}
                 value={Number(effectiveZoom.toFixed(2))}
+                onPointerDown={() => setAutoFit(false)}
                 onChange={(e) => {
                   const v = parseFloat(e.currentTarget.value);
                   setZoom(v);
-                  setAutoFit(false); // ao mexer no slider, desliga auto-fit
                 }}
-                disabled={autoFit}
                 title={
                   autoFit
-                    ? 'Ajuste automático ativo'
+                    ? 'Auto-ajuste ativo — arraste para assumir controle'
                     : 'Arraste para ajustar o zoom'
                 }
               />
@@ -96,16 +114,24 @@ export default function BuilderPage() {
               </button>
 
               <button
-                className="btn btn-outline"
-                onClick={() => window.print()}
+                className="btn btn-subtle"
+                onClick={() => {
+                  setZoom(1);
+                  setAutoFit(false);
+                }}
+                title="Zoom 100%"
               >
-                Imprimir
+                100%
               </button>
+
+              {/* Removi o botão Imprimir daqui para evitar duplicado */}
+              {/* <button className="btn btn-outline" onClick={handlePrint}>Imprimir</button> */}
 
               <button
                 className="btn btn-primary"
                 onClick={() => {
                   // TODO: gerar PDF (html2canvas/jsPDF)
+                  // Dica: durante a captura, zere transform da .preview-canvas e restaure depois.
                 }}
               >
                 Gerar PDF
@@ -115,7 +141,11 @@ export default function BuilderPage() {
             <div className="preview-body" ref={bodyRef}>
               <div
                 className="preview-canvas"
-                style={{ transform: `scale(${effectiveZoom})` }}
+                style={{
+                  transform: `scale(${effectiveZoom})`,
+                  transformOrigin: 'top center',
+                  willChange: 'transform',
+                }}
               >
                 <Preview />
               </div>

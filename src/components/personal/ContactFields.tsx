@@ -9,7 +9,6 @@
 // • microcopy clara nos placeholders e dicas
 // -------------------------------------------------------------
 
-import React from 'react';
 import type { PersonalErrors } from '../../state/personal';
 import type { PersonalData as Dados } from '../../types';
 
@@ -21,7 +20,6 @@ type Props = {
   inputClasses: (hasErr?: boolean) => string;
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 function normalizeEmail(v: string) {
   return (v || '').trim().toLowerCase();

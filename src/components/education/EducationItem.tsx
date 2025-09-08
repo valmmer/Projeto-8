@@ -10,7 +10,7 @@
 // • Instituição* obrigatória
 // -----------------------------------------------------------------------------
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Education } from '../../types';
 
 type Props = {
@@ -58,8 +58,18 @@ export default function EducationItem({
     return out;
   }, [yMax, yMin]);
 
-  // é Ensino Médio se o curso começar com "Ensino Médio"
-  const isMedio = /^Ensino Médio/i.test(item.curso || '');
+  // --- Detecção robusta do "Ensino Médio" (ignora acento/maiúsculas/espaços) ---
+  function normalizeStr(s?: string) {
+    return (
+      (s || '')
+        .normalize('NFD')
+        // @ts-ignore - \p{Diacritic} requer flag 'u' em runtimes modernos
+        .replace(/\p{Diacritic}/gu, '')
+        .trim()
+        .toLowerCase()
+    );
+  }
+  const isMedio = normalizeStr(item.curso).startsWith('ensino medio');
 
   // status/ano derivados do período atual
   const derivedStatus = deriveStatus(item.periodo);
@@ -81,15 +91,20 @@ export default function EducationItem({
     ? derivedStatus
     : pendingStatus;
 
-  // Atualiza o texto do curso quando for Ensino Médio
-  function syncMedioLabel(status: 'Completo' | 'Incompleto') {
-    if (isMedio) set({ curso: `Ensino Médio (${status})` });
+  // Helpers para rótulo do Médio
+  const medioLabel = (status: 'Completo' | 'Incompleto') =>
+    `Ensino Médio (${status})`;
+
+  // Atualiza o texto do curso quando JÁ for Ensino Médio
+  function syncMedioLabelIfMedio(status: 'Completo' | 'Incompleto') {
+    if (isMedio) set({ curso: medioLabel(status) });
   }
 
   // Alterna o checkbox "Ensino Médio"
   function toggleMedio(checked: boolean) {
     if (checked) {
-      syncMedioLabel(statusNow);
+      // Força escrever o label do Médio para passar a ser reconhecido na próxima render
+      set({ curso: medioLabel(statusNow) });
     } else {
       // volta a ser Superior/Curso livre → limpa para o usuário digitar
       set({ curso: '' });
@@ -105,7 +120,8 @@ export default function EducationItem({
         : next;
 
     setPendingStatus(nextFinal);
-    syncMedioLabel(nextFinal);
+    // atualiza rótulo do Médio somente se já for Médio
+    syncMedioLabelIfMedio(nextFinal);
 
     // Se já tiver ano, reescreve o período com o novo rótulo
     if (year) {
@@ -138,7 +154,7 @@ export default function EducationItem({
       setPendingStatus(normalizedStatus);
     }
     // Atualiza rótulo do Médio, se aplicável
-    syncMedioLabel(normalizedStatus);
+    syncMedioLabelIfMedio(normalizedStatus);
 
     set({
       periodo:
@@ -216,7 +232,7 @@ export default function EducationItem({
 
           {isMedio ? (
             <div className="input bg-slate-50 text-slate-600">
-              {`Ensino Médio (${statusNow})`}
+              {medioLabel(statusNow)}
             </div>
           ) : (
             <input

@@ -1,17 +1,17 @@
-// src/components/experience/ExperienceItem.tsx
+// src/components/experience/ExperienceItem.new.tsx
 // -----------------------------------------------------------------------------
-// Card de experiência profissional (layout padronizado + IA na descrição)
-// • Empresa *  |  Cargo *
-// • Localidade: "Cidade - Estado" (traço automático)
-// • Período *: <PeriodPicker> (MM/AAAA - MM/AAAA | MM/AAAA - Atual)
-//   → sincroniza também o booleano `atual` do tipo Experience
-// • Descrição (opcional) com contador + botão ✨ Melhorar (IA ou fallback local)
+// Card de experiência com IA padronizada (ImproveButton) + efeito de loading.
+// - Usa o mesmo fluxo de IA dos outros forms (improveText → /api/ai/improve).
+// - Efeito visual enquanto gera (shimmer no textarea + badge flutuante).
+// - maxDesc default = 160 (altere se quiser).
 // -----------------------------------------------------------------------------
 
-import React, { useMemo, useState } from 'react';
+import { useState } from 'react';
 import PeriodPicker from '../education/PeriodPicker';
+import ImproveButton from '../ImproveButton'; // ✅ IA padronizada
 import type { Experience } from '../../types';
 
+// ----------------------------- Tipagens -----------------------------
 type Props = {
   item: Experience;
   index: number;
@@ -20,16 +20,12 @@ type Props = {
   errors?: Partial<
     Record<keyof Experience | 'empresa' | 'cargo' | 'periodo', string>
   >;
-  /** (Opcional) Se você já tem um serviço de IA, injete aqui.
-   * Deve retornar um texto melhorado baseado na descrição atual e contexto. */
-  aiImprove?: (input: {
-    descricaoAtual: string;
-    empresa?: string;
-    cargo?: string;
-    periodo?: string;
-  }) => Promise<string>;
+  /** Limite de caracteres do campo descrição (default 160). */
+  maxDesc?: number;
 };
 
+// ----------------------------- Utils -----------------------------
+/** Formata "Cidade UF" → "Cidade - UF" (ou mantém se já tiver traço) */
 export function normalizeCidadeEstado(s: string): string {
   const v = (s || '').trim();
   if (v.includes('-')) return v.replace(/\s*-\s*/, ' - ');
@@ -38,104 +34,53 @@ export function normalizeCidadeEstado(s: string): string {
   return v;
 }
 
-/** Fallback simples quando não há IA externa */
-function improveLocal({
-  descricaoAtual,
-  empresa,
-  cargo,
-  periodo,
-}: {
-  descricaoAtual: string;
-  empresa?: string;
-  cargo?: string;
-  periodo?: string;
-}) {
-  const base = (descricaoAtual || '')
-    .replace(/\s+/g, ' ')
-    .replace(/\s*\.\s*/g, '. ')
-    .trim();
-
-  if (base.length >= 60) {
-    // deixa mais direto: tira rodeios comuns e garante ponto final
-    let out = base
-      .replace(/^Atuei\s+como\s+/i, '')
-      .replace(/^Responsável\s+por\s+/i, '')
-      .replace(/\s*–\s*/g, ' - ')
-      .trim();
-    if (!/[.!?]$/.test(out)) out += '.';
-    return out;
-  }
-
-  // gera uma base quando está vazio/curto
-  const segs: string[] = [];
-  if (cargo || empresa)
-    segs.push(`${cargo ?? 'Profissional'} na ${empresa ?? 'empresa'}`);
-  if (periodo) segs.push(periodo);
-  const head = segs.filter(Boolean).join(' — ');
-  const bullets = [
-    'Principais responsabilidades: desenvolvimento, manutenção e suporte.',
-    'Resultados: entregas no prazo, melhoria de performance e qualidade.',
-    'Tecnologias: defina as principais stacks e ferramentas.',
-  ];
-  return `${head}\n• ${bullets.join('\n• ')}`;
+/** Spinner minimalista para o badge */
+function Spinner({ className = 'h-3 w-3' }: { className?: string }) {
+  return (
+    <svg
+      className={`animate-spin ${className}`}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+      />
+    </svg>
+  );
 }
 
+// ----------------------------- Componente -----------------------------
 export default function ExperienceItem({
   item,
   index,
   onChange,
   onRemove,
   errors = {},
-  aiImprove,
+  maxDesc = 160, // 👈 feeling similar ao Objetivo
 }: Props) {
   const set = (patch: Partial<Experience>) => onChange({ ...item, ...patch });
 
   const [descLen, setDescLen] = useState(item.descricao?.length ?? 0);
-  const [improving, setImproving] = useState(false);
-  const maxDesc = 400;
-
-  const years = useMemo(() => {
-    const now = new Date().getFullYear();
-    return Array.from({ length: 61 }, (_, i) => String(now - i));
-  }, []);
+  const [improving, setImproving] = useState(false); // sincroniza com ImproveButton
 
   const hasErr = !!errors.empresa || !!errors.cargo || !!errors.periodo;
 
-  async function handleImprove() {
-    try {
-      setImproving(true);
-      const payload = {
-        descricaoAtual: item.descricao ?? '',
-        empresa: item.empresa,
-        cargo: item.cargo,
-        periodo: item.periodo,
-      };
-      let improved = '';
-      if (aiImprove) {
-        // ✅ Usa IA externa se fornecida
-        improved = (await aiImprove(payload)) ?? '';
-      } else {
-        // ✅ Fallback local (heurístico)
-        improved = improveLocal(payload);
-      }
-      // aplica limite e atualiza estado
-      improved = improved.trim().slice(0, maxDesc);
-      set({ descricao: improved });
-      setDescLen(improved.length);
-    } catch {
-      // silencioso; você pode exibir um toast se tiver no projeto
-    } finally {
-      setImproving(false);
-    }
-  }
-
   return (
     <div
-      className={`rounded-2xl border p-4 space-y-4 bg-white/80 ${
-        hasErr ? 'ring-1 ring-red-300' : ''
-      }`}
+      className={`rounded-2xl border p-4 space-y-4 bg-white/80 ${hasErr ? 'ring-1 ring-red-300' : ''}`}
+      aria-busy={improving ? 'true' : 'false'}
     >
-      {/* Cabeçalho */}
+      {/* Cabeçalho do card */}
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-slate-800">
           Experiência #{index + 1}
@@ -151,7 +96,7 @@ export default function ExperienceItem({
         </button>
       </div>
 
-      {/* Grid padronizada */}
+      {/* Grid de campos (empresa/cargo/período/descrição) */}
       <div className="grid md:grid-cols-2 gap-3">
         {/* Empresa */}
         <div>
@@ -185,33 +130,8 @@ export default function ExperienceItem({
           {errors.cargo && <p className="help text-red-600">{errors.cargo}</p>}
         </div>
 
-        {/* Localidade */}
-        <div>
-          <label htmlFor={`xp-loc-${item.id}`} className="label">
-            Localidade
-          </label>
-          <input
-            id={`xp-loc-${item.id}`}
-            className="input"
-            value={item.localidade ?? ''}
-            // ✅ Deixa digitar livre (com espaços)
-            onChange={(e) => set({ localidade: e.currentTarget.value })}
-            // ✅ Normaliza só ao sair do campo
-            onBlur={(e) =>
-              set({ localidade: normalizeCidadeEstado(e.currentTarget.value) })
-            }
-            placeholder="Ex.: São Paulo - SP"
-            inputMode="text"
-            autoCapitalize="words"
-          />
-          <p className="help text-slate-500">
-            Formato: Cidade - UF.
-          </p>
-        </div>
-
         {/* Período — 2 colunas para alinhar com Educação */}
         <div className="md:col-span-2">
-          <label className="label">Período *</label>
           <PeriodPicker
             value={item.periodo ?? ''}
             onChange={(v) => set({ periodo: v, atual: /\bAtual$/.test(v) })}
@@ -226,29 +146,59 @@ export default function ExperienceItem({
             <label htmlFor={`xp-desc-${item.id}`} className="label">
               Descrição (opcional)
             </label>
-            <button
-              type="button"
-              className="btn btn-subtle"
-              onClick={handleImprove}
-              disabled={improving}
-              title="Gerar uma versão melhorada desta descrição"
-            >
-              {improving ? 'Gerando…' : '✨ Melhorar'}
-            </button>
+
+            {/* ✅ ImproveButton: chama a IA real (mesmo fluxo dos outros forms) */}
+            <ImproveButton
+              value={item.descricao ?? ''}
+              field="experiencia"
+              onChange={(novo) => {
+                const v = (novo ?? '').slice(0, maxDesc);
+                set({ descricao: v });
+                setDescLen(v.length);
+              }}
+              onLoadingChange={setImproving}
+              meta={{
+                context: [
+                  item.cargo && `(${item.cargo})`,
+                  item.empresa && `em ${item.empresa}`,
+                  item.periodo,
+                ]
+                  .filter(Boolean)
+                  .join(' '),
+                maxChars: maxDesc,
+                tone: 'profissional',
+                locale: 'pt-BR',
+              }}
+            />
           </div>
 
-          <textarea
-            id={`xp-desc-${item.id}`}
-            className="input min-h-[96px]"
-            maxLength={maxDesc}
-            value={item.descricao ?? ''}
-            onChange={(e) => {
-              const val = e.currentTarget.value;
-              set({ descricao: val });
-              setDescLen(val.length);
-            }}
-            placeholder="Principais responsabilidades, tecnologias, resultados..."
-          />
+          {/* Textarea com shimmer + badge flutuante enquanto gera */}
+          <div className="relative">
+            <textarea
+              id={`xp-desc-${item.id}`}
+              className={`input min-h-[112px] transition ${improving ? 'opacity-70 animate-pulse' : ''}`}
+              maxLength={maxDesc}
+              readOnly={improving}
+              aria-readonly={improving ? 'true' : 'false'}
+              value={item.descricao ?? ''}
+              onChange={(e) => {
+                const val = e.currentTarget.value.slice(0, maxDesc);
+                set({ descricao: val });
+                setDescLen(val.length);
+              }}
+              placeholder="Principais responsabilidades, tecnologias, resultados..."
+            />
+            {improving && (
+              <span
+                className="pointer-events-none absolute top-2 right-2 inline-flex items-center gap-2 rounded-full bg-slate-800/90 px-3 py-1 text-xs text-white shadow"
+                aria-live="polite"
+              >
+                <Spinner />
+                IA melhorando…
+              </span>
+            )}
+          </div>
+
           <div className="text-[11px] text-slate-500 mt-1">
             {descLen}/{maxDesc}
           </div>

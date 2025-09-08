@@ -9,7 +9,7 @@
 // • Usa inputClasses(hasErr) para borda/anel de erro.
 // -------------------------------------------------------------
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { PersonalErrors } from '../../state/personal';
 import type { PersonalData as Dados } from '../../types';
 

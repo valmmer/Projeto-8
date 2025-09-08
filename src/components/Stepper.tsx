@@ -1,5 +1,4 @@
 // src/components/Stepper.tsx
-import React from "react";
 
 interface Step {
   id: number;

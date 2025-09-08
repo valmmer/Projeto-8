@@ -1,85 +1,102 @@
 // src/lib/pdf/export.ts
 // PDF A4 multipágina alinhado às margens do @page (ABNT/Modern).
-// - Usa a largura real do elemento (#cv-page) e fatiamento proporcional (210x297).
-// - Overlap de 1px entre fatias evita “linhas brancas” em alguns viewers.
-// - Oferece elementToPDF (salva), elementToPDFBlob (retorna Blob) e elementToPNG.
+// - Rasteriza o #cv-page com html2canvas, usa escala baseada no devicePixelRatio,
+//   e fatia exatamente no aspecto 210x297 (A4 retrato), com 1px de overlap.
+// - Oferece: elementToPDF (baixa), elementToPDFBlob (retorna Blob) e elementToPNG.
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export type ExportOptions = {
-  fileName?: string;      // sem extensão; será adicionado .pdf
-  scale?: number;         // escala do html2canvas (2~3 recomendado)
-  imageQuality?: number;  // JPEG [0..1]
-  pageBackground?: string;// fundo ao rasterizar
+  fileName?: string; // nome base do arquivo (sem extensão)
+  scale?: number; // escala para o html2canvas (default: DPR arredondado >= 2)
+  imageQuality?: number; // qualidade JPEG 0..1 (default: 0.92)
+  pageBackground?: string; // fundo durante rasterização (default: #fff)
 };
 
 const A4_W_MM = 210;
 const A4_H_MM = 297;
 
-// ---------------- helpers ----------------
+// 1px de overlap para evitar linhas brancas entre fatias em alguns viewers
+const SLICE_OVERLAP_PX = 1;
+
+// ================== Utils ==================
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
-function ensureExt(name: string, ext: string) {
-  return name.toLowerCase().endsWith(`.${ext}`) ? name : `${name}.${ext}`;
+
+function ensureExt(name: string, ext: 'pdf' | 'png' | 'jpg' | 'jpeg') {
+  const lower = name.toLowerCase();
+  if (lower.endsWith(`.${ext}`)) return name;
+  return `${name}.${ext}`;
 }
 
 /**
- * Renderiza o elemento em um canvas respeitando o tamanho real do DOM.
- * Neutralize transforms do preview usando a classe .exporting no layout.
- */
-async function rasterize(
-  el: HTMLElement,
-  {
-    scale,
-    pageBackground = '#ffffff',
-  }: Partial<ExportOptions> = {},
-) {
-  // Se o chamador não definiu escala, ajusta com base no DPR (limita para não pesar demais).
-  const effScale =
-    typeof scale === 'number'
-      ? scale
-      : clamp(Math.max(2, window.devicePixelRatio || 1), 2, 3);
-
-  const canvas = await html2canvas(el, {
-    scale: effScale,
-    backgroundColor: pageBackground,
-    useCORS: true,
-    allowTaint: false,
-    logging: false,
-    windowWidth: el.scrollWidth,   // evita interferência de zoom/scroll
-    windowHeight: el.scrollHeight,
-    removeContainer: true,
-  });
-  return canvas;
-}
-
-/**
- * Fatia verticalmente o canvas fonte com um pequeno overlap para evitar
- * hairlines entre páginas em alguns leitores de PDF.
+ * Fatia um canvas verticalmente em retângulos de altura targetH,
+ * com overlap de 1px entre as fatias (evita “linha branca”).
  */
 function sliceCanvasVertical(
   src: HTMLCanvasElement,
-  sliceHeight: number,
-  overlap = 1, // 1px de overlap entre as páginas
+  targetH: number,
+  overlap = SLICE_OVERLAP_PX,
 ) {
   const slices: HTMLCanvasElement[] = [];
-  const totalHeight = src.height;
   let y = 0;
 
-  while (y < totalHeight) {
-    const h = Math.min(sliceHeight, totalHeight - y);
-    const page = document.createElement('canvas');
-    page.width = src.width;
-    page.height = h;
-    const ctx = page.getContext('2d')!;
-    ctx.drawImage(src, 0, y, src.width, h, 0, 0, src.width, h);
-    slices.push(page);
-    // próximo y recua 1px para fazer overlap e sumir as linhas
-    y += h - (overlap > 0 ? overlap : 0);
+  while (y < src.height) {
+    // último pedaço pode ser menor
+    const h = Math.min(targetH, src.height - y);
+    const cnv = document.createElement('canvas');
+    cnv.width = src.width;
+    cnv.height = h + (y > 0 ? overlap : 0); // adiciona overlap no topo (exceto primeira)
+
+    const ctx = cnv.getContext('2d')!;
+    // recorta da origem Y ajustando se não for a primeira fatia
+    const sy = y - (y > 0 ? overlap : 0);
+    const sh = h + (y > 0 ? overlap : 0);
+
+    ctx.drawImage(
+      src,
+      0,
+      sy,
+      src.width,
+      sh, // recorte do original
+      0,
+      0,
+      cnv.width,
+      cnv.height, // destino
+    );
+
+    slices.push(cnv);
+    y += h; // avança para próxima página
   }
   return slices;
+}
+
+/**
+ * Converte um elemento DOM para canvas de alta qualidade.
+ * - useCORS: true → habilita imagens externas com CORS.
+ * - scale: se não definido, usa o devicePixelRatio arredondado (>= 2).
+ */
+async function rasterize(
+  el: HTMLElement,
+  opts: { scale?: number; pageBackground?: string } = {},
+): Promise<HTMLCanvasElement> {
+  const dpr = Math.max(2, Math.ceil((window as any).devicePixelRatio || 1));
+  const scale = opts.scale ?? dpr;
+
+  return await html2canvas(el, {
+    backgroundColor: opts.pageBackground ?? '#ffffff',
+    scale, // melhora nitidez (DPI efetivo maior)
+    useCORS: true, // permite imagens externas com CORS
+    allowTaint: false, // evita cross-origin taint
+    logging: false, // menos ruído no console
+    imageTimeout: 30000, // tempo para carregar img
+    // Dicas para melhor estabilidade:
+    removeContainer: true,
+    // Se você usar fontes web, já garanta no Review que document.fonts.ready foi aguardado (no server a gente já faz).
+  });
 }
 
 // ================== API pública ==================
@@ -95,9 +112,9 @@ export async function elementToPDF(el: HTMLElement, opts: ExportOptions = {}) {
 
   const canvas = await rasterize(el, { scale, pageBackground });
 
-  // Altura de página em px mantendo a proporção 210x297 de acordo com a LARGURA do canvas.
+  // Altura de página em px mantendo a proporção 210x297 a partir da LARGURA
   const pageHeightPx = Math.round((A4_H_MM / A4_W_MM) * canvas.width);
-  const slices = sliceCanvasVertical(canvas, pageHeightPx, 1);
+  const slices = sliceCanvasVertical(canvas, pageHeightPx, SLICE_OVERLAP_PX);
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -117,20 +134,16 @@ export async function elementToPDF(el: HTMLElement, opts: ExportOptions = {}) {
   doc.save(ensureExt(fileName, 'pdf'));
 }
 
-/** Igual ao anterior, mas retorna um Blob do PDF (não faz download). */
+/** Gera o PDF e retorna como Blob (sem fazer download). Útil para testes/upload. */
 export async function elementToPDFBlob(
   el: HTMLElement,
-  opts: Omit<ExportOptions, 'fileName'> = {},
+  opts: ExportOptions = {},
 ): Promise<Blob> {
-  const {
-    scale,
-    imageQuality = 0.92,
-    pageBackground = '#ffffff',
-  } = opts;
+  const { scale, imageQuality = 0.92, pageBackground = '#ffffff' } = opts;
 
   const canvas = await rasterize(el, { scale, pageBackground });
   const pageHeightPx = Math.round((A4_H_MM / A4_W_MM) * canvas.width);
-  const slices = sliceCanvasVertical(canvas, pageHeightPx, 1);
+  const slices = sliceCanvasVertical(canvas, pageHeightPx, SLICE_OVERLAP_PX);
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -146,16 +159,14 @@ export async function elementToPDFBlob(
     doc.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
   });
 
-  // @ts-expect-error: getBlob existe nas versões modernas do jspdf
-  const blob: Blob = await new Promise((resolve) => doc.getBlob(resolve));
-  return blob;
+  return doc.output('blob');
 }
 
 /** Exporta como PNG único (da página inteira, sem fatiar) */
 export async function elementToPNG(
   el: HTMLElement,
   fileBaseName = 'Curriculo',
-  scale = 2,
+  scale?: number,
 ) {
   const canvas = await rasterize(el, { scale });
   const link = document.createElement('a');
